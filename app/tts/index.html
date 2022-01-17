@@ -1,0 +1,28 @@
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>TTS</title>
+  </head>
+
+  <body>
+    <script src="socket.io/socket.io.js"></script>
+    <script>
+      var socket = io();
+
+      socket.on("tts-event", function (msg) {
+        if ("speechSynthesis" in window) {
+          var speech = new SpeechSynthesisUtterance();
+          speech.lang = "pt";
+          speech.text = msg;
+          window.speechSynthesis.speak(speech);
+        } else {
+          // Speech Synthesis Not Supported 😣
+          alert("Sorry, your browser doesn't support text to speech!");
+          console.log("Sorry, your browser doesn't support text to speech!");
+        }
+      });
+    </script>
+  </body>
+</html>

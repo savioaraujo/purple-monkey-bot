@@ -1,0 +1,25 @@
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Layer</title>
+  </head>
+
+  <script src="socket.io/socket.io.js"></script>
+  <script>
+    var socket = io();
+
+    socket.on("layer", function (msg) {
+      soundRequest();
+    });
+
+    function soundRequest() {
+      var audio = new Audio(
+        "https://www.myinstants.com/media/sounds/rojao-estourado.mp3"
+      );
+      audio.play();
+    }
+  </script>
+  <body></body>
+</html>

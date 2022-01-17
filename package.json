@@ -1,0 +1,29 @@
+{
+  "name": "purple-monkey-bot",
+  "version": "1.0.0",
+  "description": "bot para twitch",
+  "main": "index.js",
+  "scripts": {
+    "test": "app.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/savioaraujo/purple-monkey-bot.git"
+  },
+  "keywords": [
+    "bot;twitch;node"
+  ],
+  "author": "Sávio Araújo",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/savioaraujo/purple-monkey-bot/issues"
+  },
+  "homepage": "https://github.com/savioaraujo/purple-monkey-bot#readme",
+  "dependencies": {
+    "express": "^4.17.2",
+    "jquery": "^3.6.0",
+    "mongoose": "^6.1.6",
+    "socket.io": "^4.4.1",
+    "tmi.js": "^1.8.5"
+  }
+}
