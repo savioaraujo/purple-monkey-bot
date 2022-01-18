@@ -21,6 +21,7 @@
   "homepage": "https://github.com/savioaraujo/purple-monkey-bot#readme",
   "dependencies": {
     "express": "^4.17.2",
+    "implement-js": "0.0.31",
     "jquery": "^3.6.0",
     "mongoose": "^6.1.6",
     "socket.io": "^4.4.1",

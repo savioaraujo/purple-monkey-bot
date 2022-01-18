@@ -1,0 +1,4 @@
+const TipoComando = {
+  TEXTO,
+  AUDIO
+};

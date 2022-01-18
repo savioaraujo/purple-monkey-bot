@@ -11,12 +11,11 @@
     var socket = io();
 
     socket.on("alert", function (msg) {
-      console.log('teste');
-      soundRequest();
+      soundRequest(msg);
     });
 
-    function soundRequest() {
-      var audio = new Audio("bem-tevi.mp3");
+    function soundRequest(msg) {
+      var audio = new Audio(msg);
       audio.play();
     }
   </script>
