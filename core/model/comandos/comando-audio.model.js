@@ -3,6 +3,9 @@ class ComandoAudio {
     this.comando = comando;
     this.audio = audio;
   }
+  match(mensagem){
+    return mensagem.toLowerCase().startsWith(this.comando);
+  }
 }
 
 module.exports = ComandoAudio;

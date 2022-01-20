@@ -1,6 +1,6 @@
 class Canal {
-  constructor(canal, comandos) {
-    this.canal = "#" + canal;
+  constructor(nome, comandos) {
+    this.nome = "#" + nome;
     this.comandos = comandos;
   }
 }

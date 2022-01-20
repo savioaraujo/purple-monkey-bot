@@ -40,17 +40,11 @@ class Servidor {
     });
   }
 
-  notificarSocket(evento, msg) {
+  notificarSockets(evento, msg) {
     this.sockets.forEach((socket) => {
-      console.log("teste");
       socket.emit(evento, msg);
     });
   }
 }
-/* teste */
-var servidor = new Servidor(3000);
-servidor.registrarApp("/alert", __dirname + "/core/app/alert/index.html");
-servidor.registrarConteudoPublico(__dirname + "/core/app/alert/sounds/");
-servidor.start();
 
 module.exports = Servidor;

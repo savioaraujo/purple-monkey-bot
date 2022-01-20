@@ -7,6 +7,7 @@
   </head>
 
   <body>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script src="socket.io/socket.io.js"></script>
     <script>
       var socket = io();
@@ -17,12 +18,17 @@
           speech.lang = "pt";
           speech.text = msg;
           window.speechSynthesis.speak(speech);
-        } else {
-          // Speech Synthesis Not Supported 😣
-          alert("Sorry, your browser doesn't support text to speech!");
-          console.log("Sorry, your browser doesn't support text to speech!");
         }
       });
+        $(function () {
+        $("#tts").bind("load", function () {
+          console.log($(this).contents().find("[id=voice]").html());
+        });
+      });
     </script>
+    <iframe
+      id="tts"
+      src="https://ttsmp3.com/text-to-speech/"
+    ></iframe>
   </body>
 </html>
