@@ -12,7 +12,7 @@ let canais = new CanalDatabase().getCanais();
 
 var chatBot = new PurpleMonkeyChatBot(
   "purplemonkeybot",
-  "oauth:",
+  "oauth:xuaovdy1ois22qgq75anpx1lj0rz2p",
   canais
 );
 

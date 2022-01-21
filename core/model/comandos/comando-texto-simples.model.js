@@ -5,13 +5,18 @@
  * response : Retornando um texto de teste.
  */
 class ComandoTextoSimples {
-  constructor(comando, resposta) {
+  constructor(comando, resposta, matcher) {
     this.comando = comando;
     this.resposta = resposta;
+    this.matcher = matcher;
   }
 
   match(mensagem) {
-    return mensagem.toLowerCase().startsWith(this.comando);
+    if (this.matcher != null && this.matcher != undefined) {
+      return this.matcher.match(mensagem);
+    } else {
+      return mensagem.toLowerCase().startsWith(this.comando);
+    }
   }
 }
 

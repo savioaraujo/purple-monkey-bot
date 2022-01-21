@@ -21,8 +21,6 @@ class ComandoChatTTS {
       let groups = this.defaultTTS.exec("" + mensagem.toLowerCase());
       this.voz = this.formatter.camelSentence(groups[1]);
       this.resposta = new RespostaTexto(groups[2]);
-      console.log(this.voz);
-      console.log(groups[2]);
       // TODO: Validar se a voz é valida.
       return true;
     }
