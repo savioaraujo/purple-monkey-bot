@@ -4,6 +4,7 @@
   "description": "bot para twitch",
   "main": "index.js",
   "scripts": {
+    "start": "node index.js",
     "test": "app.js"
   },
   "repository": {
@@ -21,6 +22,8 @@
   "homepage": "https://github.com/savioaraujo/purple-monkey-bot#readme",
   "dependencies": {
     "express": "^4.17.2",
+    "index.js": "0.0.3",
+    "node-fetch": "^3.3.2",
     "puppeteer": "^13.1.1",
     "socket.io": "^4.4.1",
     "tmi.js": "^1.8.5"

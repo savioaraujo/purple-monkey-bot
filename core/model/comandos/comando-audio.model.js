@@ -3,8 +3,12 @@ class ComandoAudio {
     this.comando = comando;
     this.audio = audio;
   }
-  match(mensagem){
-    return mensagem.toLowerCase().startsWith(this.comando);
+  match(mensagem) {
+    const mensagemNormalizada = mensagem.toLowerCase();
+    return (
+      mensagemNormalizada === this.comando ||
+      mensagemNormalizada.startsWith(this.comando + " ")
+    );
   }
 }
 

@@ -1,0 +1,108 @@
+{
+  "twitch": {
+    "clientId": "cqb9h7uz073qyx2fhu4faeusctoeei",
+    "clientSecret": "ulzyn2r0icccx2l2ocjk8bs5vk6yyx",
+    "redirectUri": "http://localhost:3000/auth/twitch/callback",
+    "scopes": [
+      "chat:read",
+      "chat:edit",
+      "moderator:read:chatters"
+    ],
+    "userAccessToken": "p8va72j0mtdu3ij6dppzunb0h1g4kr",
+    "refreshToken": "zyp6148ldce5n7ec9zr5ke2ftpeaqg9razbdzvwywio90bat0i",
+    "tokenType": "bearer",
+    "tokenExpiresAt": "2026-07-04T04:38:19.437Z",
+    "tokenScopes": [
+      "chat:edit",
+      "chat:read",
+      "moderator:read:chatters"
+    ],
+    "moderatorId": "491852579",
+    "moderatorLogin": "balderking",
+    "cacheTtlMs": 30000,
+    "broadcasterIdsByChannel": {}
+  },
+  "canais": [
+    {
+      "nome": "balderking",
+      "comandos": [
+        {
+          "tipo": "audio",
+          "comando": "!bemtevi",
+          "audio": "bem-tevi.mp3"
+        },
+        {
+          "tipo": "audio",
+          "comando": "!cuequinha",
+          "audio": "cueca-branca.mp3"
+        },
+        {
+          "tipo": "audio",
+          "comando": "!nanezinha",
+          "audio": "nanezinha.mp3"
+        },
+        {
+          "tipo": "texto-simples",
+          "comando": "!info",
+          "resposta": "Eu sou um bot, meu criador balderking me chamou aqui. Obrigado por me aceitar peepoLove."
+        },
+        {
+          "tipo": "tts",
+          "comando": "!cuequinha-tts",
+          "resposta": "Eu tô de cuequinha branca. cê vai amar. peepoHappy",
+          "options": {
+            "provider": "xai",
+            "voice": "eve",
+            "language": "pt-br"
+          }
+        },
+        {
+          "tipo": "chat-tts",
+          "comando": "!tts",
+          "options": {
+            "provider": "xai",
+            "voice": "eve",
+            "language": "pt-br"
+          }
+        },
+        {
+          "tipo": "tts",
+          "comando": "!test-tts",
+          "resposta": "Teste de TTS automático: Olá, isso é um teste gerado pelo bot.",
+          "options": {
+            "provider": "xai",
+            "voice": "eve",
+            "language": "pt-br",
+            "instructions": "Fale de forma clara e em tom amistoso.",
+            "model": "gpt-4o-mini-tts"
+          }
+        },
+        {
+          "tipo": "texto-regex",
+          "matcher": "^(bom dia|boa tarde|boa noite|boa madrugada|buenos dias|buenos tardes|buenos notches|buena madrugada|aloha)",
+          "resposta": "{{g1}} {{username}}, seja bem vindo(a)."
+        },
+        {
+          "tipo": "texto-regex",
+          "matcher": "!abraco\\s@(\\w+)",
+          "resposta": "{{username}} abraçou {{g1}} peepoLove"
+        },
+        {
+          "tipo": "texto-regex",
+          "matcher": "!privacy",
+          "resposta": "{{username}} que safadeza é essa ?"
+        },
+        {
+          "tipo": "texto-regex",
+          "matcher": "!pix",
+          "resposta": "{{username}} só aceito pix de R$ 100 pra cima."
+        },
+        {
+          "tipo": "texto-simples",
+          "comando": "!sorteia",
+          "resposta": "{{username}} sorteou {{random_viewer}}"
+        }
+      ]
+    }
+  ]
+}

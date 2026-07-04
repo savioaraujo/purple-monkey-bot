@@ -7,6 +7,7 @@ class Servidor {
     this.porta = porta;
     this.sockets = [];
     this.app = express();
+    this.app.use(express.json({ limit: "1mb" }));
     this.server = http.createServer(this.app);
     this.io = new Server(this.server);
 
@@ -30,8 +31,20 @@ class Servidor {
       res.sendFile(index);
     });
   }
-  registrarConteudoPublico(dir) {
-    this.app.use(express.static(dir));
+  registrarConteudoPublico(dir, path) {
+    if (path) {
+      this.app.use(path, express.static(dir));
+    } else {
+      this.app.use(express.static(dir));
+    }
+  }
+
+  registrarGet(path, callback) {
+    this.app.get(path, callback);
+  }
+
+  registrarPost(path, callback) {
+    this.app.post(path, callback);
   }
 
   start() {

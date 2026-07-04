@@ -15,7 +15,11 @@ class ComandoTextoSimples {
     if (this.matcher != null && this.matcher != undefined) {
       return this.matcher.match(mensagem);
     } else {
-      return mensagem.toLowerCase().startsWith(this.comando);
+      const mensagemNormalizada = mensagem.toLowerCase();
+      return (
+        mensagemNormalizada === this.comando ||
+        mensagemNormalizada.startsWith(this.comando + " ")
+      );
     }
   }
 }

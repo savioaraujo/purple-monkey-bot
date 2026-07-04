@@ -2,11 +2,21 @@ const FormatterUtils = require("../../shared/utils/formatter.utils");
 const RespostaTexto = require("./resposta-texto.model");
 
 class ComandoChatTTS {
-  constructor() {
-    this.voz = "Vitoria";
-    this.comando = "chat tts"
+  constructor(options) {
+    this.options = Object.assign(
+      {
+        provider: "xai",
+        voice: "eve",
+        language: "pt-br",
+        model: null,
+        instructions: null,
+      },
+      options || {}
+    );
+    this.comando = "chat tts";
     this.resposta = undefined;
-    this.defaultTTS = new RegExp('!tts-(\\w+)\\s(.*)');
+    this.defaultTTS = new RegExp("!tts-(\\w+)\\s(.*)");
+    this.simpleTTS = new RegExp("!tts\\s(.*)");
     this.formatter = new FormatterUtils();
   }
 
@@ -16,14 +26,22 @@ class ComandoChatTTS {
    !tts-camila alguma coisa
   */
   match(mensagem) {
-    let matchs = mensagem.toLowerCase().match(this.defaultTTS);
-    if (matchs) {
-      let groups = this.defaultTTS.exec("" + mensagem.toLowerCase());
-      this.voz = this.formatter.camelSentence(groups[1]);
+    const lower = "" + mensagem.toLowerCase();
+    let groups = this.defaultTTS.exec(lower);
+    if (groups) {
+      this.options.voice = this.formatter.camelSentence(groups[1]);
       this.resposta = new RespostaTexto(groups[2]);
-      // TODO: Validar se a voz é valida.
       return true;
     }
+
+    groups = this.simpleTTS.exec(lower);
+    if (groups) {
+      this.options.voice = this.options.voice || "Vitoria";
+      this.resposta = new RespostaTexto(groups[1]);
+      return true;
+    }
+
+    return false;
   }
 }
 

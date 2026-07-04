@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Purple Monkey Config</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: Arial, Helvetica, sans-serif;
+        background: #15151a;
+        color: #f4f1ea;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: #15151a;
+      }
+
+      main {
+        max-width: 1120px;
+        margin: 0 auto;
+        padding: 32px 20px;
+      }
+
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 18px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 28px;
+        font-weight: 700;
+      }
+
+      .actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      button {
+        border: 1px solid #6f6b7a;
+        border-radius: 6px;
+        background: #24232b;
+        color: #f4f1ea;
+        cursor: pointer;
+        font-weight: 700;
+        padding: 10px 14px;
+      }
+
+      button.primary {
+        background: #5f7f52;
+        border-color: #7ea06f;
+      }
+
+      button:hover {
+        filter: brightness(1.1);
+      }
+
+      textarea {
+        width: 100%;
+        min-height: 66vh;
+        box-sizing: border-box;
+        border: 1px solid #3a3844;
+        border-radius: 8px;
+        background: #202027;
+        color: #f4f1ea;
+        font-family: Consolas, "Courier New", monospace;
+        font-size: 14px;
+        line-height: 1.45;
+        padding: 16px;
+        resize: vertical;
+        outline: none;
+      }
+
+      textarea:focus {
+        border-color: #8da87f;
+      }
+
+      .status {
+        min-height: 22px;
+        margin-top: 12px;
+        color: #c9c3b8;
+      }
+
+      .status.erro {
+        color: #ffb1a8;
+      }
+
+      .status.sucesso {
+        color: #bde0aa;
+      }
+
+      .oauth-info {
+        border: 1px solid #3a3844;
+        border-radius: 8px;
+        background: #202027;
+        margin-bottom: 16px;
+        padding: 14px 16px;
+      }
+
+      .oauth-info h2 {
+        font-size: 16px;
+        margin: 0 0 10px;
+      }
+
+      .oauth-info dl {
+        display: grid;
+        grid-template-columns: 160px 1fr;
+        gap: 8px 12px;
+        margin: 0;
+      }
+
+      .oauth-info dt {
+        color: #c9c3b8;
+      }
+
+      .oauth-info dd {
+        margin: 0;
+        overflow-wrap: anywhere;
+      }
+
+      .oauth-info code {
+        font-family: Consolas, "Courier New", monospace;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Configuração dos comandos</h1>
+        <div class="actions">
+          <button id="connect-twitch">Conectar Twitch</button>
+          <button id="reload">Recarregar</button>
+          <button id="format">Formatar JSON</button>
+          <button id="save" class="primary">Salvar</button>
+        </div>
+      </header>
+
+      <section class="oauth-info">
+        <h2>OAuth Twitch</h2>
+        <dl>
+          <dt>Redirect URI</dt>
+          <dd><code id="oauth-redirect-uri">Carregando...</code></dd>
+          <dt>Client secret</dt>
+          <dd id="oauth-client-secret">Carregando...</dd>
+          <dt>Token salvo</dt>
+          <dd id="oauth-token">Carregando...</dd>
+          <dt>Scopes</dt>
+          <dd id="oauth-scopes">Carregando...</dd>
+        </dl>
+      </section>
+
+      <textarea id="config" spellcheck="false"></textarea>
+      <div id="status" class="status"></div>
+    </main>
+
+    <script>
+      const editor = document.querySelector("#config");
+      const statusEl = document.querySelector("#status");
+      const oauthRedirectUri = document.querySelector("#oauth-redirect-uri");
+      const oauthClientSecret = document.querySelector("#oauth-client-secret");
+      const oauthToken = document.querySelector("#oauth-token");
+      const oauthScopes = document.querySelector("#oauth-scopes");
+
+      function setStatus(message, type) {
+        statusEl.textContent = message;
+        statusEl.className = "status " + (type || "");
+      }
+
+      async function carregarConfig() {
+        setStatus("Carregando...");
+        const response = await fetch("/api/config");
+        const config = await response.json();
+        editor.value = JSON.stringify(config, null, 2);
+        await carregarStatusOAuth();
+        setStatus("Config carregada.", "sucesso");
+      }
+
+      async function carregarStatusOAuth() {
+        const response = await fetch("/auth/twitch/status");
+        const status = await response.json();
+
+        if (!response.ok) {
+          throw new Error(status.erro || "Nao foi possivel carregar status OAuth.");
+        }
+
+        oauthRedirectUri.textContent = status.redirectUri;
+        oauthClientSecret.textContent = status.clientSecretConfigurado ? "Configurado" : "Nao configurado";
+        oauthToken.textContent = status.tokenSalvo ? "Salvo" : "Nao salvo";
+        oauthScopes.textContent = status.scopes.join(", ");
+      }
+
+      function lerJsonEditor() {
+        try {
+          return JSON.parse(editor.value);
+        } catch (error) {
+          throw new Error("JSON invalido: " + error.message);
+        }
+      }
+
+      document.querySelector("#reload").addEventListener("click", () => {
+        carregarConfig().catch((error) => setStatus(error.message, "erro"));
+      });
+
+      document.querySelector("#connect-twitch").addEventListener("click", async () => {
+        try {
+          setStatus("Preparando autorização Twitch...");
+          const response = await fetch("/auth/twitch/url");
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.erro || "Nao foi possivel iniciar OAuth.");
+          }
+
+          if (data.status) {
+            oauthRedirectUri.textContent = data.status.redirectUri;
+          }
+
+          window.location.href = data.url;
+        } catch (error) {
+          setStatus(error.message, "erro");
+        }
+      });
+
+      document.querySelector("#format").addEventListener("click", () => {
+        try {
+          editor.value = JSON.stringify(lerJsonEditor(), null, 2);
+          setStatus("JSON formatado.", "sucesso");
+        } catch (error) {
+          setStatus(error.message, "erro");
+        }
+      });
+
+      document.querySelector("#save").addEventListener("click", async () => {
+        try {
+          const config = lerJsonEditor();
+          const response = await fetch("/api/config", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(config),
+          });
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.erro || "Nao foi possivel salvar.");
+          }
+
+          editor.value = JSON.stringify(data, null, 2);
+          setStatus("Config salva e bot atualizado.", "sucesso");
+        } catch (error) {
+          setStatus(error.message, "erro");
+        }
+      });
+
+      carregarConfig().catch((error) => setStatus(error.message, "erro"));
+    </script>
+  </body>
+</html>

@@ -19,7 +19,7 @@ class FormatterUtils {
     // caso posuir, adicionar na lista de macros.
     // EX : {{random_1_100}}, {{random_list_classe}}
     macros.forEach((macro) => {
-      mensagem = mensagem.replace(macro.marcacao, macro.valor);
+      mensagem = mensagem.split(macro.marcacao).join(macro.valor);
     });
 
     return mensagem;
