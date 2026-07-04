@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CRUD - Comandos Texto Simples</title>
+  <style>
+    :root{color-scheme:dark;font-family:Arial,Helvetica,sans-serif;background:linear-gradient(135deg,#1b1024 0%,#2f1743 100%);color:#f4ecff}
+    body{margin:0;padding:20px;background:linear-gradient(135deg,#1b1024 0%,#2f1743 100%);color:#f4ecff}
+    .row{display:flex;gap:20px;align-items:flex-start}
+    .col{flex:1}
+    label{display:block;margin-top:8px;font-weight:700}
+    input,textarea,select{width:100%;padding:10px;margin-top:4px;border:1px solid #7a5ba8;border-radius:8px;background:#2c1c43;color:#f4ecff;box-sizing:border-box}
+    button{margin-top:8px;padding:8px 12px;border:1px solid #7a5ba8;border-radius:6px;background:#3b2458;color:#f4ecff;cursor:pointer;font-weight:700}
+    button:hover{filter:brightness(1.1)}
+    .commands-list{max-height:400px;overflow:auto;border:1px solid #5f4488;padding:8px;border-radius:8px;background:rgba(45,28,68,.9)}
+    .command-item{padding:8px 6px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;justify-content:space-between;gap:10px}
+    .macro{display:inline-block;padding:6px;margin:4px;border:1px solid #7a5ba8;border-radius:4px;cursor:pointer;background:#3b2458}
+    .macro:hover{background:#4d2e6b}
+  </style>
+</head>
+<body>
+  <h1 id="pageTitle">Comandos de Texto Simples (MVC)</h1>
+
+  <div>
+    <label>Canal</label>
+    <select id="channelSelect"></select>
+  </div>
+
+    <div class="row" style="margin-top:12px">
+    <div class="col">
+      <h3>Comandos</h3>
+      <div class="commands-list" id="commandsList"></div>
+      <button id="newBtn">Adicionar comando</button>
+    </div>
+
+    <div class="col" id="editorColumn" style="display:none">
+      <h3>Editor</h3>
+      <form id="editorForm">
+        <input type="hidden" id="editingIndex" />
+        <label id="cmdNameLabel">Nome do comando (ex: !teste) <span style="color:red">*</span></label>
+        <input id="cmdName" required />
+
+        <label id="cmdOptionsLabel" style="display:none">Options (JSON) <span style="color:#888">(opcional)</span></label>
+        <textarea id="cmdOptions" rows="6" style="display:none" placeholder='{"provider":"xai","voice":"eve","language":"pt-br"}'></textarea>
+
+        <label>Resposta <span style="color:red">*</span></label>
+        <textarea id="cmdResponse" rows="6" required></textarea>
+
+        <div>
+          <button type="submit">Salvar</button>
+          <button type="button" id="cancelBtn">Cancelar</button>
+          <button type="button" id="deleteBtn" style="float:right;color:#a00">Excluir</button>
+        </div>
+      </form>
+
+      <h4>Macros disponíveis</h4>
+      <div id="macrosList"></div>
+      <p style="color:#666;font-size:12px;margin-top:8px">Clique em uma macro para inserir em posição do cursor na resposta.</p>
+    </div>
+  </div>
+
+  <script src="/config/text-commands/model.js"></script>
+  <script src="/config/text-commands/controller.js"></script>
+</body>
+</html>

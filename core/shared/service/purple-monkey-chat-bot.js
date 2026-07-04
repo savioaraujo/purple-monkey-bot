@@ -110,10 +110,19 @@ class PurpleMonkeyChatBot {
   }
 
   async executarComando(comando, channel, tags, message, servidor) {
+    const canalContexto = this.obterCanalContexto(channel);
+
     if (comando instanceof ComandoTexto) {
+      const macrosContexto = await this.criarMacrosContexto(
+        channel,
+        tags,
+        message,
+        comando.resposta.mensagem,
+        canalContexto
+      );
       let mensagemResposta = await this.formatarMensagemResposta(
         comando.resposta.mensagem,
-        await this.criarMacrosContexto(channel, tags, message)
+        macrosContexto
       );
       mensagemResposta = await this.formatarMensagemResposta(
         mensagemResposta,
@@ -123,13 +132,13 @@ class PurpleMonkeyChatBot {
     } else if (comando instanceof ComandoTextoSimples) {
       const mensagemResposta = await this.formatarMensagemResposta(
         comando.resposta.mensagem,
-        await this.criarMacrosContexto(channel, tags, message)
+        await this.criarMacrosContexto(channel, tags, message, comando.resposta.mensagem, canalContexto)
       );
       this.client.say(channel, mensagemResposta);
     } else if (comando instanceof ComandoTTS) {
       const mensagemResposta = await this.formatarMensagemResposta(
         comando.resposta.mensagem,
-        await this.criarMacrosContexto(channel, tags, message)
+        await this.criarMacrosContexto(channel, tags, message, comando.resposta.mensagem, canalContexto)
       );
       // Envia para a UI/layer via socket para que o app TTS gere a fala com voz de IA
       if (servidor && typeof servidor.notificarSockets === "function") {
@@ -150,7 +159,7 @@ class PurpleMonkeyChatBot {
       if (comando.resposta && comando.resposta.mensagem) {
         const respostaChat = await this.formatarMensagemResposta(
           comando.resposta.mensagem,
-          await this.criarMacrosContexto(channel, tags, message)
+          await this.criarMacrosContexto(channel, tags, message, comando.resposta.mensagem, canalContexto)
         );
         this.client.say(channel, respostaChat);
       }
@@ -158,7 +167,7 @@ class PurpleMonkeyChatBot {
       const mensagemResposta = comando.resposta ? comando.resposta.mensagem : "";
       const mensagemFormatada = await this.formatarMensagemResposta(
         mensagemResposta,
-        await this.criarMacrosContexto(channel, tags, message)
+        await this.criarMacrosContexto(channel, tags, message, mensagemResposta, canalContexto)
       );
       if (servidor && typeof servidor.notificarSockets === "function") {
         servidor.notificarSockets("alert", {
@@ -189,15 +198,87 @@ class PurpleMonkeyChatBot {
     }
   }
 
-  async criarMacrosContexto(channel, tags, message) {
+  async criarMacrosContexto(channel, tags, message, textoBase = "", canalContexto = null) {
     const macroUtils = new MacroUtils();
+    const textoParaResolver = textoBase || message || "";
+
     macroUtils.addMacro("{{username}}", tags.username || "");
     macroUtils.addMacro("{{displayName}}", tags["display-name"] || tags.username || "");
     macroUtils.addMacro("{{channel}}", channel.replace("#", ""));
     macroUtils.addMacro("{{message}}", message);
-    macroUtils.addMacro("{{random_viewer}}", await this.getRandomViewer(channel, tags));
-    macroUtils.addMacro("{{random_follow}}", await this.getRandomFollower(channel, tags));
+
+    if (textoParaResolver.includes("{{random_viewer}}")) {
+      macroUtils.addMacro("{{random_viewer}}", await this.getRandomViewer(channel, tags));
+    }
+
+    if (textoParaResolver.includes("{{random_follow}}")) {
+      macroUtils.addMacro("{{random_follow}}", await this.getRandomFollower(channel, tags));
+    }
+
+    return this.adicionarMacrosAleatorias(macroUtils, textoParaResolver, canalContexto);
+  }
+
+  adicionarMacrosAleatorias(macroUtils, textoBase, canalContexto = null) {
+    const regexIntervalo = /\{\{random_(\d+)_(\d+)\}\}/gi;
+    const regexLista = /\{\{random_pick_([^}]+)\}\}/gi;
+    let match;
+
+    while ((match = regexIntervalo.exec(textoBase || "")) !== null) {
+      const inicio = Number.parseInt(match[1], 10);
+      const fim = Number.parseInt(match[2], 10);
+      const valor = this.getValorAleatorioIntervalo(inicio, fim);
+      macroUtils.addMacro(match[0], String(valor));
+    }
+
+    while ((match = regexLista.exec(textoBase || "")) !== null) {
+      const valor = this.getValorAleatorioLista(canalContexto, match[1]);
+      macroUtils.addMacro(match[0], String(valor));
+    }
+
     return macroUtils.getMacros();
+  }
+
+  getValorAleatorioIntervalo(inicio, fim) {
+    const inicioNum = Number.parseInt(inicio, 10);
+    const fimNum = Number.parseInt(fim, 10);
+    if (Number.isNaN(inicioNum) || Number.isNaN(fimNum)) {
+      return "";
+    }
+    const min = Math.min(inicioNum, fimNum);
+    const max = Math.max(inicioNum, fimNum);
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  }
+
+  getValorAleatorioLista(canalContexto, nomeLista) {
+    const nomeNormalizado = this.normalizarNomeLista(nomeLista);
+    if (!nomeNormalizado || !canalContexto || !Array.isArray(canalContexto.listas)) {
+      return "";
+    }
+
+    const lista = canalContexto.listas.find((item) => this.normalizarNomeLista(item && item.nome) === nomeNormalizado);
+    if (!lista || !Array.isArray(lista.valores) || lista.valores.length === 0) {
+      return "";
+    }
+
+    const valor = lista.valores[Math.floor(Math.random() * lista.valores.length)];
+    return valor == null ? "" : String(valor);
+  }
+
+  normalizarNomeLista(nome) {
+    return String(nome || "")
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, "_");
+  }
+
+  obterCanalContexto(channel) {
+    const nomeCanal = String(channel || "").replace(/^#/, "").toLowerCase();
+    return (this.canais || []).find((canal) => {
+      const nomeCanalContexto = String(canal && canal.nome ? canal.nome : "")
+        .replace(/^#/, "")
+        .toLowerCase();
+      return nomeCanalContexto === nomeCanal;
+    });
   }
 
   async getRandomViewer(channel, tags) {

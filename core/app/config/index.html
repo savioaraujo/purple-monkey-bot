@@ -8,14 +8,14 @@
       :root {
         color-scheme: dark;
         font-family: Arial, Helvetica, sans-serif;
-        background: #15151a;
-        color: #f4f1ea;
+        background: linear-gradient(135deg, #1b1024 0%, #2f1743 100%);
+        color: #f4ecff;
       }
 
       body {
         margin: 0;
         min-height: 100vh;
-        background: #15151a;
+        background: linear-gradient(135deg, #1b1024 0%, #2f1743 100%);
       }
 
       main {
@@ -45,18 +45,18 @@
       }
 
       button {
-        border: 1px solid #6f6b7a;
+        border: 1px solid #7a5ba8;
         border-radius: 6px;
-        background: #24232b;
-        color: #f4f1ea;
+        background: #3b2458;
+        color: #f4ecff;
         cursor: pointer;
         font-weight: 700;
         padding: 10px 14px;
       }
 
       button.primary {
-        background: #5f7f52;
-        border-color: #7ea06f;
+        background: #7b4ed4;
+        border-color: #9a73eb;
       }
 
       button:hover {
@@ -80,7 +80,7 @@
       }
 
       textarea:focus {
-        border-color: #8da87f;
+        border-color: #af8cff;
       }
 
       .status {
@@ -98,11 +98,12 @@
       }
 
       .oauth-info {
-        border: 1px solid #3a3844;
+        border: 1px solid #5f4488;
         border-radius: 8px;
-        background: #202027;
+        background: rgba(45, 28, 68, 0.9);
         margin-bottom: 16px;
         padding: 14px 16px;
+        box-shadow: 0 8px 24px rgba(16, 8, 29, 0.25);
       }
 
       .oauth-info h2 {
@@ -138,7 +139,6 @@
         <div class="actions">
           <button id="connect-twitch">Conectar Twitch</button>
           <button id="reload">Recarregar</button>
-          <button id="format">Formatar JSON</button>
           <button id="save" class="primary">Salvar</button>
         </div>
       </header>
@@ -157,17 +157,77 @@
         </dl>
       </section>
 
-      <textarea id="config" spellcheck="false"></textarea>
-      <div id="status" class="status"></div>
+      <div style="display:flex; gap:20px; align-items:flex-start;">
+        <aside style="width:260px; padding:16px; border:1px solid #5f4488; border-radius:12px; background:rgba(45, 28, 68, 0.9); box-shadow:0 8px 24px rgba(16, 8, 29, 0.25);">
+          <label for="channelSelect">Canal</label>
+          <select id="channelSelect" style="width:100%; margin-bottom:12px; border-radius:6px; padding:8px; background:#2c1c43; color:#f4ecff; border:1px solid #7a5ba8;"></select>
+
+          <div style="margin-bottom:8px; font-weight:700;">Tipos de Comando</div>
+          <div id="types" style="display:flex; flex-direction:column; gap:6px; margin-bottom:10px;">
+            <button data-type="audio">Audio</button>
+            <button data-type="texto-simples">Texto simples</button>
+            <button data-type="texto-regex">Texto regex</button>
+            <button data-type="tts">TTS</button>
+          </div>
+
+          <div style="margin-top:14px;">
+            <button id="addCommand" class="primary" style="width:100%">Adicionar comando</button>
+          </div>
+
+          <div style="margin-top:16px; padding:12px; border:1px solid #5f4488; border-radius:10px; background:rgba(30,20,45,0.95);">
+            <div style="font-weight:700; margin-bottom:8px;">Listas configuráveis</div>
+            <label for="listSelect" style="display:block; margin-bottom:6px; font-size:12px; color:#c9c3b8;">Lista</label>
+            <select id="listSelect" style="width:100%; margin-bottom:8px; border-radius:6px; padding:8px; background:#2c1c43; color:#f4ecff; border:1px solid #7a5ba8;"></select>
+
+            <label for="listNameInput" style="display:block; margin-bottom:6px; font-size:12px; color:#c9c3b8;">Nome da lista</label>
+            <input id="listNameInput" style="width:100%; margin-bottom:8px; border-radius:6px; padding:8px; background:#2c1c43; color:#f4ecff; border:1px solid #7a5ba8; box-sizing:border-box;" />
+
+            <label for="listValuesInput" style="display:block; margin-bottom:6px; font-size:12px; color:#c9c3b8;">Valores (um por linha)</label>
+            <textarea id="listValuesInput" rows="5" style="width:100%; box-sizing:border-box; border-radius:6px; padding:8px; background:#2c1c43; color:#f4ecff; border:1px solid #7a5ba8; resize:vertical;"></textarea>
+
+            <div style="display:flex; gap:8px; margin-top:8px;">
+              <button id="saveListBtn" class="primary" style="flex:1">Salvar lista</button>
+              <button id="deleteListBtn">Excluir</button>
+            </div>
+            <div id="listsSummary" style="margin-top:10px; font-size:12px; color:#c9c3b8;"></div>
+          </div>
+        </aside>
+
+        <section style="flex:1; min-width:0;">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:8px;">
+            <h2 id="listTitle" style="margin:0; font-size:18px">Comandos</h2>
+            <div style="display:flex; gap:8px;">
+              <button id="save-inline" class="primary">Salvar</button>
+            </div>
+          </div>
+
+          <div id="editorArea" style="border:1px solid #5f4488; border-radius:12px; padding:12px; background:rgba(45, 28, 68, 0.9); box-shadow:0 8px 24px rgba(16, 8, 29, 0.25); min-height:640px;"></div>
+
+          <div id="status" class="status"></div>
+        </section>
+      </div>
     </main>
 
-    <script>
-      const editor = document.querySelector("#config");
+      <script>
       const statusEl = document.querySelector("#status");
       const oauthRedirectUri = document.querySelector("#oauth-redirect-uri");
       const oauthClientSecret = document.querySelector("#oauth-client-secret");
       const oauthToken = document.querySelector("#oauth-token");
       const oauthScopes = document.querySelector("#oauth-scopes");
+      const connectTwitchBtn = document.getElementById("connect-twitch");
+      const reloadBtn = document.getElementById("reload");
+      const saveBtn = document.getElementById("save");
+      const saveInlineBtn = document.getElementById("save-inline");
+      const listSelect = document.getElementById("listSelect");
+      const listNameInput = document.getElementById("listNameInput");
+      const listValuesInput = document.getElementById("listValuesInput");
+      const saveListBtn = document.getElementById("saveListBtn");
+      const deleteListBtn = document.getElementById("deleteListBtn");
+      const listsSummary = document.getElementById("listsSummary");
+
+      let configData = null;
+      let currentChannelIndex = 0;
+      let currentType = 'audio';
 
       function setStatus(message, type) {
         statusEl.textContent = message;
@@ -178,88 +238,337 @@
         setStatus("Carregando...");
         const response = await fetch("/api/config");
         const config = await response.json();
-        editor.value = JSON.stringify(config, null, 2);
+        configData = config;
+        renderChannels();
         await carregarStatusOAuth();
         setStatus("Config carregada.", "sucesso");
+      }
+
+      function renderChannels() {
+        const sel = document.querySelector('#channelSelect');
+        sel.innerHTML = '';
+        (configData.canais || []).forEach((c, idx) => {
+          const opt = document.createElement('option');
+          opt.value = idx;
+          opt.textContent = c.nome;
+          sel.appendChild(opt);
+        });
+        sel.selectedIndex = 0;
+        sel.addEventListener('change', () => { currentChannelIndex = parseInt(sel.value,10); renderList(); renderLists(); });
+        renderList();
+        renderLists();
       }
 
       async function carregarStatusOAuth() {
         const response = await fetch("/auth/twitch/status");
         const status = await response.json();
-
-        if (!response.ok) {
-          throw new Error(status.erro || "Nao foi possivel carregar status OAuth.");
-        }
-
         oauthRedirectUri.textContent = status.redirectUri;
         oauthClientSecret.textContent = status.clientSecretConfigurado ? "Configurado" : "Nao configurado";
         oauthToken.textContent = status.tokenSalvo ? "Salvo" : "Nao salvo";
         oauthScopes.textContent = status.scopes.join(", ");
       }
 
-      function lerJsonEditor() {
+      function renderList() {
+        const editorArea = document.querySelector('#editorArea');
+        const canal = (configData.canais || [])[currentChannelIndex];
+        if (!canal) return;
+
+        const supportedTypes = ['texto-simples', 'texto-regex', 'audio', 'tts'];
+        if (!supportedTypes.includes(currentType)) {
+          editorArea.innerHTML = '';
+          return;
+        }
+
+        const src = getIframeSrcForType(currentType);
+        editorArea.innerHTML = '<iframe src="' + src + '" style="width:100%;height:640px;border:0;background:#fff;border-radius:10px"></iframe>';
+      }
+
+      function getIframeSrcForType(type) {
+        if (type === 'texto-simples') return '/config/text-commands';
+        if (type === 'texto-regex') return '/config/text-commands?type=texto-regex';
+        if (type === 'tts') return '/config/text-commands?type=tts';
+        return '/config/audio-commands';
+      }
+
+      function getCommandsForCurrentChannel() {
+        return (configData.canais || [])[currentChannelIndex].comandos;
+      }
+
+      function getListsForCurrentChannel() {
+        const canal = (configData.canais || [])[currentChannelIndex] || {};
+        return Array.isArray(canal.listas) ? canal.listas : [];
+      }
+
+      function renderLists() {
+        if (!configData) return;
+        const listas = getListsForCurrentChannel();
+        listSelect.innerHTML = '<option value="">Nova lista</option>';
+        listas.forEach((lista, index) => {
+          const opt = document.createElement('option');
+          opt.value = lista.nome;
+          opt.textContent = lista.nome;
+          listSelect.appendChild(opt);
+        });
+        listSelect.value = '';
+        listNameInput.value = '';
+        listValuesInput.value = '';
+        listsSummary.innerHTML = listas.length
+          ? listas.map((lista) => '<div>• ' + lista.nome + ' (' + (Array.isArray(lista.valores) ? lista.valores.length : 0) + ' itens)</div>').join('')
+          : '<div>Nenhuma lista cadastrada ainda.</div>';
+      }
+
+      function persistList() {
+        const nome = (listNameInput.value || '').trim();
+        const valores = (listValuesInput.value || '')
+          .split(/\r?\n/)
+          .map((item) => item.trim())
+          .filter(Boolean);
+
+        if (!nome) {
+          setStatus('Informe um nome para a lista.', 'erro');
+          return;
+        }
+
+        const canal = (configData.canais || [])[currentChannelIndex] || {};
+        const listas = Array.isArray(canal.listas) ? canal.listas : [];
+        const index = listas.findIndex((item) => String(item && item.nome || '').toLowerCase() === nome.toLowerCase());
+        if (index >= 0) {
+          listas[index] = { nome, valores };
+        } else {
+          listas.push({ nome, valores });
+        }
+        canal.listas = listas;
+        saveConfig().then(() => {
+          renderLists();
+          setStatus('Lista salva.', 'sucesso');
+        }).catch((e) => setStatus(e.message || 'Erro ao salvar lista', 'erro'));
+      }
+
+      function deleteSelectedList() {
+        const nome = listSelect.value;
+        if (!nome) {
+          setStatus('Selecione uma lista para excluir.', 'erro');
+          return;
+        }
+
+        const canal = (configData.canais || [])[currentChannelIndex] || {};
+        const listas = Array.isArray(canal.listas) ? canal.listas : [];
+        canal.listas = listas.filter((item) => String(item && item.nome || '').toLowerCase() !== nome.toLowerCase());
+        saveConfig().then(() => {
+          renderLists();
+          setStatus('Lista removida.', 'sucesso');
+        }).catch((e) => setStatus(e.message || 'Erro ao remover lista', 'erro'));
+      }
+
+      function getDefaultTtsOptions() {
+        return {
+          provider: 'xai',
+          voice: 'eve',
+          language: 'pt-br',
+          model: null,
+          instructions: null
+        };
+      }
+
+      function parseTtsOptions(rawValue) {
+        const trimmed = (rawValue || '').trim();
+        if (!trimmed) {
+          return getDefaultTtsOptions();
+        }
+
         try {
-          return JSON.parse(editor.value);
-        } catch (error) {
-          throw new Error("JSON invalido: " + error.message);
+          const parsed = JSON.parse(trimmed);
+          if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+            throw new Error('O valor de options precisa ser um objeto JSON.');
+          }
+          return Object.assign({}, getDefaultTtsOptions(), parsed);
+        } catch (e) {
+          throw new Error('JSON de options inválido. Ex.: {"provider":"xai","voice":"eve","language":"pt-br"}');
         }
       }
 
-      document.querySelector("#reload").addEventListener("click", () => {
-        carregarConfig().catch((error) => setStatus(error.message, "erro"));
-      });
+      function openEditor(def, globalIndex) {
+        const editorArea = document.querySelector('#editorArea');
+        editorArea.innerHTML = '';
+        const form = document.createElement('div');
+        form.style.display='grid'; form.style.gridTemplateColumns='1fr 1fr'; form.style.gap='10px';
 
-      document.querySelector("#connect-twitch").addEventListener("click", async () => {
-        try {
-          setStatus("Preparando autorização Twitch...");
-          const response = await fetch("/auth/twitch/url");
-          const data = await response.json();
+        // common fields
+        const comandoField = document.createElement('input'); comandoField.placeholder='comando'; comandoField.value = def.comando || '';
+        const respostaField = document.createElement('textarea'); respostaField.placeholder='resposta'; respostaField.value = def.resposta || (def.resposta && def.resposta.mensagem) || '';
 
-          if (!response.ok) {
-            throw new Error(data.erro || "Nao foi possivel iniciar OAuth.");
-          }
+        form.appendChild(comandoField);
+        form.appendChild(document.createElement('div'));
 
-          if (data.status) {
-            oauthRedirectUri.textContent = data.status.redirectUri;
-          }
-
-          window.location.href = data.url;
-        } catch (error) {
-          setStatus(error.message, "erro");
-        }
-      });
-
-      document.querySelector("#format").addEventListener("click", () => {
-        try {
-          editor.value = JSON.stringify(lerJsonEditor(), null, 2);
-          setStatus("JSON formatado.", "sucesso");
-        } catch (error) {
-          setStatus(error.message, "erro");
-        }
-      });
-
-      document.querySelector("#save").addEventListener("click", async () => {
-        try {
-          const config = lerJsonEditor();
-          const response = await fetch("/api/config", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(config),
+        if (def.tipo === 'audio') {
+          const audioLabel = document.createElement('div'); audioLabel.textContent='Arquivo de áudio (nome/path)';
+          const audioField = document.createElement('input'); audioField.style.width='100%'; audioField.value = def.audio || (def.audio && def.audio) || '';
+          const fileInput = document.createElement('input'); fileInput.type='file';
+          const uploadBtn = document.createElement('button'); uploadBtn.textContent='Upload';
+          uploadBtn.addEventListener('click', async () => {
+            if (!fileInput.files || !fileInput.files[0]) return alert('Escolha um arquivo.');
+            const f = fileInput.files[0];
+            const arr = await readFileAsBase64(f);
+            setStatus('Enviando arquivo...');
+            const resp = await fetch('/api/upload', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ filename: f.name, data: arr }) });
+            const body = await resp.json();
+            if (!resp.ok) { setStatus(body.erro || 'Erro no upload','erro'); return; }
+            audioField.value = body.path;
+            setStatus('Arquivo enviado.', 'sucesso');
           });
-          const data = await response.json();
 
-          if (!response.ok) {
-            throw new Error(data.erro || "Nao foi possivel salvar.");
+          form.appendChild(audioLabel);
+          form.appendChild(audioField);
+          form.appendChild(fileInput);
+          form.appendChild(uploadBtn);
+        }
+
+        if (def.tipo === 'texto-simples' || def.tipo === 'texto-regex') {
+          const macrosBox = document.createElement('div');
+          macrosBox.style.gridColumn='1/-1'; macrosBox.style.marginTop='8px';
+          macrosBox.innerHTML = '<strong>Macros disponíveis:</strong><br>{{username}}, {{displayName}}, {{channel}}, {{message}}, {{random_viewer}}, {{random_follow}}, {{random_pick_animais}}, {{g1}}...';
+          form.appendChild(macrosBox);
+          form.appendChild(document.createElement('div'));
+        }
+
+        if (def.tipo === 'tts' || def.tipo === 'chat-tts') {
+          const optionsLabel = document.createElement('div');
+          optionsLabel.style.gridColumn='1/-1';
+          optionsLabel.innerHTML = '<strong>Options (JSON)</strong><br><span style="color:#c9c3b8; font-size:12px">Opcional. Se vazio, usa os defaults: provider xai, voice eve, language pt-br.</span>';
+          const optionsField = document.createElement('textarea');
+          optionsField.style.gridColumn='1/-1';
+          optionsField.rows = 6;
+          optionsField.placeholder = '{"provider":"xai","voice":"eve","language":"pt-br"}';
+          const optionsObj = Object.assign({}, getDefaultTtsOptions(), def.options || {});
+          optionsField.value = JSON.stringify(optionsObj, null, 2);
+          form.appendChild(optionsLabel);
+          form.appendChild(optionsField);
+        }
+
+        const saveBtn = document.createElement('button'); saveBtn.textContent='Salvar alteração';
+        saveBtn.addEventListener('click', async () => {
+          const cmds = getCommandsForCurrentChannel();
+          const target = cmds[globalIndex];
+          if (target.comando !== undefined) target.comando = comandoField.value;
+          if (target.matcher !== undefined) target.matcher = comandoField.value;
+          if (target.resposta !== undefined || target.tipo === 'texto-simples' ) target.resposta = respostaField.value;
+
+          if (target.tipo === 'audio') {
+            const audioInput = form.querySelector('input[type="text"]') || null;
+            if (audioInput) target.audio = audioInput.value;
           }
 
-          editor.value = JSON.stringify(data, null, 2);
-          setStatus("Config salva e bot atualizado.", "sucesso");
-        } catch (error) {
-          setStatus(error.message, "erro");
-        }
+          if (target.tipo === 'tts' || target.tipo === 'chat-tts') {
+            const optionsField = form.querySelector('textarea');
+            if (!optionsField) {
+              target.options = getDefaultTtsOptions();
+            } else {
+              try {
+                target.options = parseTtsOptions(optionsField.value);
+              } catch (e) {
+                setStatus(e.message, 'erro');
+                return;
+              }
+            }
+          }
+
+          await saveConfig();
+          renderList();
+          setStatus('Comando atualizado.', 'sucesso');
+        });
+
+        editorArea.appendChild(form);
+        editorArea.appendChild(saveBtn);
+      }
+
+      function removeCommand(globalIndex) {
+        if (!confirm('Remover este comando?')) return;
+        const cmds = getCommandsForCurrentChannel();
+        cmds.splice(globalIndex,1);
+        saveConfig();
+        renderList();
+        setStatus('Comando removido.', 'sucesso');
+      }
+
+      async function saveConfig() {
+        setStatus('Salvando...');
+        const resp = await fetch('/api/config', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(configData) });
+        const body = await resp.json();
+        if (!resp.ok) { setStatus(body.erro || 'Erro ao salvar','erro'); return; }
+        configData = body;
+        renderList();
+        setStatus('Config salva e bot atualizado.', 'sucesso');
+      }
+
+      function readFileAsBase64(file) {
+        return new Promise((res, rej) => {
+          const r = new FileReader();
+          r.onload = () => { const raw = r.result.split(',')[1]; res(raw); };
+          r.onerror = rej;
+          r.readAsDataURL(file);
+        });
+      }
+
+      document.querySelectorAll('#types button').forEach(btn => {
+        btn.addEventListener('click', () => {
+          currentType = btn.getAttribute('data-type');
+          document.getElementById('listTitle').textContent = 'Comandos - '+currentType;
+          renderList();
+        });
       });
 
-      carregarConfig().catch((error) => setStatus(error.message, "erro"));
-    </script>
+      document.getElementById('addCommand').addEventListener('click', () => {
+        renderList();
+      });
+
+      if (listSelect) {
+        listSelect.addEventListener('change', () => {
+          const listas = getListsForCurrentChannel();
+          const listaSelecionada = listas.find((item) => String(item && item.nome || '').toLowerCase() === String(listSelect.value || '').toLowerCase());
+          listNameInput.value = listaSelecionada ? listaSelecionada.nome : '';
+          listValuesInput.value = listaSelecionada && Array.isArray(listaSelecionada.valores)
+            ? listaSelecionada.valores.join('\n')
+            : '';
+        });
+      }
+
+      if (saveListBtn) saveListBtn.addEventListener('click', persistList);
+      if (deleteListBtn) deleteListBtn.addEventListener('click', deleteSelectedList);
+
+      if (connectTwitchBtn) {
+        connectTwitchBtn.addEventListener('click', async () => {
+          setStatus('Abrindo conexão com a Twitch...');
+          try {
+            const response = await fetch('/auth/twitch/url');
+            const body = await response.json();
+            if (!response.ok) throw new Error(body.erro || 'Erro ao criar link de autorização.');
+            window.location.href = body.url;
+          } catch (e) {
+            setStatus(e.message, 'erro');
+          }
+        });
+      }
+
+      if (reloadBtn) {
+        reloadBtn.addEventListener('click', () => {
+          carregarConfig().catch((e) => setStatus(e.message, 'erro'));
+        });
+      }
+
+      if (saveBtn) saveBtn.addEventListener('click', saveConfig);
+      if (saveInlineBtn) saveInlineBtn.addEventListener('click', saveConfig);
+
+      carregarConfig().catch((e)=> setStatus(e.message, 'erro'));
+      // Listen to iframe saves and reload config
+      window.addEventListener('message', (ev) => {
+        try {
+          const d = ev.data || {};
+          if (d && d.type === 'configSaved') {
+            carregarConfig();
+            setStatus('Config atualizada via iframe', 'sucesso');
+          }
+        } catch (e) {}
+      });
+      </script>
   </body>
 </html>

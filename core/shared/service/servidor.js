@@ -7,7 +7,7 @@ class Servidor {
     this.porta = porta;
     this.sockets = [];
     this.app = express();
-    this.app.use(express.json({ limit: "1mb" }));
+    this.app.use(express.json({ limit: "10mb" }));
     this.server = http.createServer(this.app);
     this.io = new Server(this.server);
 

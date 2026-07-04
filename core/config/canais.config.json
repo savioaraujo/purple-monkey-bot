@@ -8,17 +8,17 @@
       "chat:edit",
       "moderator:read:chatters"
     ],
-    "userAccessToken": "p8va72j0mtdu3ij6dppzunb0h1g4kr",
-    "refreshToken": "zyp6148ldce5n7ec9zr5ke2ftpeaqg9razbdzvwywio90bat0i",
+    "userAccessToken": "tjdb3x32xrkzsvg9hpl7hp0hv7c9a7",
+    "refreshToken": "jcgbmxrq6zs1vcdxv0k4r64xv2ykahl6e7jeq33d5dk70vd63k",
     "tokenType": "bearer",
-    "tokenExpiresAt": "2026-07-04T04:38:19.437Z",
+    "tokenExpiresAt": "2026-07-04T07:56:03.426Z",
     "tokenScopes": [
       "chat:edit",
       "chat:read",
       "moderator:read:chatters"
     ],
-    "moderatorId": "491852579",
-    "moderatorLogin": "balderking",
+    "moderatorId": "716892848",
+    "moderatorLogin": "purplemonkeybot",
     "cacheTtlMs": 30000,
     "broadcasterIdsByChannel": {}
   },
@@ -33,11 +33,6 @@
         },
         {
           "tipo": "audio",
-          "comando": "!cuequinha",
-          "audio": "cueca-branca.mp3"
-        },
-        {
-          "tipo": "audio",
           "comando": "!nanezinha",
           "audio": "nanezinha.mp3"
         },
@@ -49,7 +44,7 @@
         {
           "tipo": "tts",
           "comando": "!cuequinha-tts",
-          "resposta": "Eu tô de cuequinha branca. cê vai amar. peepoHappy",
+          "resposta": "Eu tô de cuequinha branca. cê vai amar. peepoHappy {{channel}}",
           "options": {
             "provider": "xai",
             "voice": "eve",
@@ -101,6 +96,80 @@
           "tipo": "texto-simples",
           "comando": "!sorteia",
           "resposta": "{{username}} sorteou {{random_viewer}}"
+        },
+        {
+          "tipo": "texto-simples",
+          "comando": "!teste",
+          "resposta": "Soou um comando de teste {{username}} {{displayName}} {{channel}} {{random_viewer}}"
+        },
+        {
+          "tipo": "audio",
+          "comando": "!teste-automation",
+          "audio": "/alert/sounds/gemidos.mp3"
+        },
+        {
+          "tipo": "texto-simples",
+          "comando": "!corno",
+          "resposta": "{{username}} é {{random_20_100}} corno !"
+        },
+        {
+          "tipo": "texto-simples",
+          "comando": "!cavaleiro",
+          "resposta": "{{random_pick_cavaleiros}}"
+        },
+        {
+          "tipo": "tts",
+          "comando": "!meucavaleiro",
+          "resposta": "o cavaleiro do {{username}} é o {{random_pick_cavaleiros}}",
+          "options": {
+            "provider": "xai",
+            "voice": "eve",
+            "language": "pt-br",
+            "model": null,
+            "instructions": null
+          }
+        }
+      ],
+      "listas": [
+        {
+          "nome": "animais",
+          "valores": [
+            "Rato",
+            "Boi",
+            "Tigre",
+            "Coelho",
+            "Dragão",
+            "Serpente",
+            "Cavalo",
+            "Cabra",
+            "Macaco",
+            "Galo",
+            "Cão",
+            "Porco"
+          ]
+        },
+        {
+          "nome": "cavaleiros",
+          "valores": [
+            "♈ Áries — Mu de Áries",
+            "♉ Touro — Aldebaran de Touro",
+            "♊ Gêmeos — Saga de Gêmeos",
+            "♋ Câncer — Máscara da Morte de Câncer",
+            "♌ Leão — Aiolia de Leão",
+            "♍ Virgem — Shaka de Virgem",
+            "♎ Libra — Dohko de Libra",
+            "♏ Escorpião — Milo de Escorpião",
+            "♐ Sagitário — Aiolos de Sagitário",
+            "♑ Capricórnio — Shura de Capricórnio",
+            "♒ Aquário — Camus de Aquário",
+            "♓ Peixes — Afrodite de Peixes",
+            "Seiya de Pégaso",
+            "Shiryu de Dragão",
+            "Hyoga de Cisne",
+            "Shun de Andrômeda",
+            "Ikki de Fênix",
+            "Saori Kido (Atena)"
+          ]
         }
       ]
     }

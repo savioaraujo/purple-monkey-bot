@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CRUD - Comandos Audio</title>
+  <style>
+    :root{color-scheme:dark;font-family:Arial,Helvetica,sans-serif;background:linear-gradient(135deg,#1b1024 0%,#2f1743 100%);color:#f4ecff}
+    body{margin:0;padding:20px;background:linear-gradient(135deg,#1b1024 0%,#2f1743 100%);color:#f4ecff}
+    .row{display:flex;gap:20px;align-items:flex-start}
+    .col{flex:1}
+    label{display:block;margin-top:8px;font-weight:700}
+    input,textarea,select{width:100%;padding:10px;margin-top:4px;border:1px solid #7a5ba8;border-radius:8px;background:#2c1c43;color:#f4ecff;box-sizing:border-box}
+    button{margin-top:8px;padding:8px 12px;border:1px solid #7a5ba8;border-radius:6px;background:#3b2458;color:#f4ecff;cursor:pointer;font-weight:700}
+    button:hover{filter:brightness(1.1)}
+    .commands-list{max-height:400px;overflow:auto;border:1px solid #5f4488;padding:8px;border-radius:8px;background:rgba(45,28,68,.9)}
+    .command-item{padding:8px 6px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;justify-content:space-between;gap:10px}
+  </style>
+</head>
+<body>
+  <h1>Comandos de Áudio (MVC)</h1>
+
+  <div>
+    <label>Canal</label>
+    <select id="channelSelect"></select>
+  </div>
+
+  <div class="row" style="margin-top:12px">
+    <div class="col">
+      <h3>Comandos</h3>
+      <div class="commands-list" id="commandsList"></div>
+      <button id="newBtn">Adicionar comando</button>
+    </div>
+
+    <div class="col" id="editorColumn" style="display:none">
+      <h3>Editor</h3>
+      <form id="editorForm">
+        <input type="hidden" id="editingIndex" />
+        <label>Nome do comando (ex: !som) <span style="color:red">*</span></label>
+        <input id="cmdName" required />
+
+        <label>Áudio (caminho público) <span style="color:red">*</span></label>
+        <input id="cmdAudio" required />
+
+        <label>Upload</label>
+        <input id="fileInput" type="file" accept="audio/*" />
+        <button type="button" id="uploadBtn">Upload</button>
+
+        <div>
+          <button type="submit">Salvar</button>
+          <button type="button" id="cancelBtn">Cancelar</button>
+          <button type="button" id="deleteBtn" style="float:right;color:#a00">Excluir</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/config/audio-commands/model.js"></script>
+  <script src="/config/audio-commands/controller.js"></script>
+</body>
+</html>

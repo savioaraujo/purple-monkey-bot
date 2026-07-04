@@ -4,7 +4,9 @@ const PurpleMonkeyChatBot = require("./core/shared/service/purple-monkey-chat-bo
 const CanalDatabase = require("./core/shared/data/canal.data.js");
 const TwitchOAuthService = require("./core/shared/service/twitch-oauth.service.js");
 
-const servidor = new Servidor(3000);
+const servidor = new Servidor(process.env.PORT || 3000);
+const fs = require('fs');
+const path = require('path');
 const canalDatabase = new CanalDatabase();
 const twitchOAuthService = new TwitchOAuthService(canalDatabase);
 let chatBot;
@@ -12,6 +14,12 @@ let chatBot;
 servidor.registrarApp("/alert", __dirname + "/core/app/alert/index.html");
 servidor.registrarApp("/tts", __dirname + "/core/app/tts/index.html");
 servidor.registrarApp("/config", __dirname + "/core/app/config/index.html");
+// Tela MVC para CRUD de comandos de texto simples
+servidor.registrarApp("/config/text-commands", __dirname + "/core/app/config/text-commands/index.html");
+servidor.registrarConteudoPublico(__dirname + "/core/app/config/text-commands", "/config/text-commands");
+// Tela MVC para CRUD de comandos de audio
+servidor.registrarApp("/config/audio-commands", __dirname + "/core/app/config/audio-commands/index.html");
+servidor.registrarConteudoPublico(__dirname + "/core/app/config/audio-commands", "/config/audio-commands");
 servidor.registrarConteudoPublico(__dirname + "/core/app/alert", "/alert");
 servidor.registrarConteudoPublico(__dirname + "/core/app/alert/sounds/");
 
@@ -84,6 +92,32 @@ servidor.registrarGet("/auth/twitch/callback", async (req, res) => {
           escapeHtml(error.message) +
           "</p><p><a href=\"/config\">Voltar para a configuração</a></p></body></html>"
       );
+  }
+});
+
+// Upload simples: espera JSON { filename, data } onde data é base64 (sem data:... prefix)
+servidor.registrarPost('/api/upload', async (req, res) => {
+  try {
+    const body = req.body || {};
+    const filename = body.filename;
+    const data = body.data;
+    if (!filename || !data) {
+      return res.status(400).json({ erro: 'filename e data sao obrigatorios' });
+    }
+
+    const soundsDir = path.join(__dirname, 'core', 'app', 'alert', 'sounds');
+    if (!fs.existsSync(soundsDir)) fs.mkdirSync(soundsDir, { recursive: true });
+
+    const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const fullPath = path.join(soundsDir, safeName);
+    const buffer = Buffer.from(data, 'base64');
+    fs.writeFileSync(fullPath, buffer);
+
+    const publicPath = '/alert/sounds/' + encodeURIComponent(safeName);
+    res.json({ path: publicPath });
+  } catch (error) {
+    console.error('Erro upload:', error);
+    res.status(500).json({ erro: error.message });
   }
 });
 
