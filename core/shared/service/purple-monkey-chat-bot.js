@@ -9,32 +9,80 @@ const TTSService = require("./tts.service.js");
 const TwitchChattersService = require("./twitch-chatters.service.js");
 const FormatterUtils = require("../utils/formatter.utils.js");
 const MacroUtils = require("../utils/macro.utils.js");
+const { resolverSenhaBot } = require("./bot-auth.utils.js");
 
 class PurpleMonkeyChatBot {
   constructor(username, password, canais, twitchConfig) {
     this.username = username;
-    this.password = this.formatarTokenChat(password);
+    this.password = this.formatarTokenChat(resolverSenhaBot(twitchConfig) || password);
     this.canais = canais;
     this.ttsService = new TTSService();
     this.twitchChattersService = new TwitchChattersService({
       ...(twitchConfig || {}),
       botUsername: username,
-      userAccessToken:
-        (twitchConfig && twitchConfig.userAccessToken) || this.password,
+      userAccessToken: this.password,
     });
     this.formatterUtils = new FormatterUtils();
+    this.listCanais = [];
+    this.client = null;
+    this.status = "inicializando";
+    this.ultimoErro = "";
+    this.conectado = false;
+  }
+
+  setStatus(status, erro) {
+    this.status = status;
+    this.ultimoErro = erro || "";
+    this.conectado = status === "conectado";
+  }
+
+  getStatusResumo() {
+    return {
+      conectado: this.conectado,
+      status: this.status,
+      ultimoErro: this.ultimoErro || null,
+      username: this.username,
+      canais: this.listCanais || [],
+    };
   }
 
   start(servidor) {
     this.listCanais = this.canais.map((canal) => canal.nome);
+    this.setStatus("tentando-conectar");
+
+    if (this.client && typeof this.client.disconnect === "function") {
+      this.client.disconnect().catch(() => {});
+    }
 
     this.client = new tmi.Client({
       options: { debug: true },
+      connection: { reconnect: true, secure: true },
       identity: {
         username: this.username,
         password: this.password,
       },
       channels: this.listCanais,
+    });
+
+    this.client.on("connected", () => {
+      this.setStatus("conectado");
+      console.log("Conectado ao chat da Twitch.");
+    });
+
+    this.client.on("disconnected", (reason) => {
+      this.setStatus("desconectado", reason || "conexão encerrada");
+      console.warn("Desconectado do chat da Twitch:", reason);
+    });
+
+    this.client.on("reconnect", () => {
+      this.setStatus("reconectando");
+      console.log("Reconectando ao chat da Twitch...");
+    });
+
+    this.client.on("error", (error) => {
+      const message = error && error.message ? error.message : String(error);
+      this.setStatus("erro", message);
+      console.error("Erro no cliente Twitch:", error);
     });
 
     this.client.on("message", async (channel, tags, message, self) => {
@@ -58,22 +106,43 @@ class PurpleMonkeyChatBot {
       });
     });
 
-    this.client.connect();
+    this.client.connect().catch((error) => {
+      const message = error && error.message ? error.message : String(error);
+      this.setStatus("erro", message);
+      console.error("Erro ao conectar ao chat da Twitch:", error);
+    });
   }
 
   async atualizarTokenChat(userAccessToken, servidor) {
     const novoPassword = this.formatarTokenChat(userAccessToken);
 
-    if (!novoPassword || novoPassword === this.password) {
+    if (!novoPassword) {
+      this.setStatus("erro", "Token de acesso não informado.");
       return;
     }
 
+    const mudouSenha = novoPassword !== this.password;
     this.password = novoPassword;
 
-    if (this.client) {
-      await this.client.disconnect();
+    if (this.client && (mudouSenha || this.status !== "conectado")) {
+      await this.client.disconnect().catch(() => {});
+      this.start(servidor);
+    } else if (!this.client) {
       this.start(servidor);
     }
+  }
+
+  async reconectar(servidor, userAccessToken) {
+    if (userAccessToken) {
+      this.password = this.formatarTokenChat(userAccessToken);
+    }
+
+    if (this.client) {
+      await this.client.disconnect().catch(() => {});
+    }
+
+    this.start(servidor);
+    return this.getStatusResumo();
   }
 
   atualizarCanais(canais) {
@@ -286,6 +355,7 @@ class PurpleMonkeyChatBot {
       return await this.twitchChattersService.getRandomViewer(channel, [
         tags.username,
         this.username,
+        'StreamElements'
       ]);
     } catch (error) {
       console.error("Erro ao resolver macro {{random_viewer}}:", error);
@@ -298,6 +368,7 @@ class PurpleMonkeyChatBot {
       return await this.twitchChattersService.getRandomFollower(channel, [
         tags.username,
         this.username,
+        'StreamElements'
       ]);
     } catch (error) {
       console.error("Erro ao resolver macro {{random_viewer}}:", error);

@@ -31,34 +31,6 @@ class TwitchApi {
     }
   }
 
-  async getLoggedFollowers() {
-    try {
-      const token = await this.getTwitchToken();
-      const broadcast = await this.getBroadcasterId("BalderKing");
-      const broadcastbot = await this.getBroadcasterId("purplemonkeybot");
-      const response = await fetch(
-        `${this.urlFollowers}?broadcaster_id=${broadcast}&moderator_id=${broadcastbot}`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Client-Id": this.clientId,
-          },
-        },
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(JSON.stringify(data));
-      }
-
-      console.log("Dados recebidos:", data.data);
-    } catch (error) {
-      console.error("Erro na requisição:", error);
-    }
-  }
-
   async getBroadcasterId(channelName) {
     try {
       // garante que temos token

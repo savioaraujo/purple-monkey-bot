@@ -34,14 +34,14 @@ class TwitchChattersService {
 
       const followers = await this.getFollowers(broadcasterId);
       const ignored = new Set((ignoredLogins || []).filter(Boolean).map((login) => login.toLowerCase()));
-      const elegiveis = followers.filter((follower) => !ignored.has(follower.from_login.toLowerCase()));
-
+      const elegiveis = followers.filter((follower) => !ignored.has(follower.user_name.toLowerCase()));
+      console.log(`Seguidores elegíveis para o canal ${channelName}: ${elegiveis.length}`);
       if (!elegiveis.length) {
         return "";
       }
 
       const index = Math.floor(Math.random() * elegiveis.length);
-      return elegiveis[index].from_name || elegiveis[index].from_login;
+      return elegiveis[index].user_name || elegiveis[index].user_login;
     } catch (error) {
       console.error("Erro ao resolver macro {{random_follow}}:", error);
       return "";

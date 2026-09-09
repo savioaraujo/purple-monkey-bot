@@ -76,7 +76,7 @@ class TwitchOAuthService {
       refreshToken: token.refresh_token,
       tokenType: token.token_type,
       tokenExpiresAt: new Date(Date.now() + token.expires_in * 1000).toISOString(),
-      tokenScopes: token.scope || [],
+      tokenScopes: token.scopes,
       moderatorId: usuario.id,
       moderatorLogin: usuario.login,
     };
@@ -160,7 +160,24 @@ class TwitchOAuthService {
   }
 
   getScopes(twitch) {
-    return twitch.scopes || ["chat:read", "chat:edit", "moderator:read:chatters", "moderator:read:followers"];
+    const defaultScopes = [
+      "chat:read",
+      "chat:edit",
+      "moderator:read:chatters",
+      "moderator:read:followers",
+      "moderator:read:moderators",
+      "user:read:follows",
+      "user:read:email",
+      "user:read:chat",
+      "moderation:read",
+      "channel:moderate",
+    ];
+
+    if (Array.isArray(twitch.scopes) && twitch.scopes.length) {
+      return twitch.scopes;
+    }
+
+    return defaultScopes;
   }
 }
 

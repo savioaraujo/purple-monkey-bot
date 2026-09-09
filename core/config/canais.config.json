@@ -1,24 +1,27 @@
 {
   "twitch": {
     "clientId": "cqb9h7uz073qyx2fhu4faeusctoeei",
-    "clientSecret": "ulzyn2r0icccx2l2ocjk8bs5vk6yyx",
+    "clientSecret": "rk3al99o1rrrepv413ndethv8n1hlt",
     "redirectUri": "http://localhost:3000/auth/twitch/callback",
     "scopes": [
       "chat:read",
       "chat:edit",
-      "moderator:read:chatters"
+      "moderator:read:chatters",
+      "moderator:read:followers",
+      "moderator:read:moderators",
+      "user:read:follows",
+      "user:read:email",
+      "user:read:chat",
+      "channel:read:subscriptions",
+      "moderation:read",
+      "channel:moderate"
     ],
-    "userAccessToken": "tjdb3x32xrkzsvg9hpl7hp0hv7c9a7",
-    "refreshToken": "jcgbmxrq6zs1vcdxv0k4r64xv2ykahl6e7jeq33d5dk70vd63k",
+    "userAccessToken": "nxvg0rwp5fra7g5tfubtca4l7oyjjo",
+    "refreshToken": "4meiivymhh0g7rcrrbspgwdw72qoe0fhtjapyx59082w6qqdg9",
     "tokenType": "bearer",
-    "tokenExpiresAt": "2026-07-04T07:56:03.426Z",
-    "tokenScopes": [
-      "chat:edit",
-      "chat:read",
-      "moderator:read:chatters"
-    ],
-    "moderatorId": "716892848",
-    "moderatorLogin": "purplemonkeybot",
+    "tokenExpiresAt": "2026-09-10T01:14:47.031Z",
+    "moderatorId": "491852579",
+    "moderatorLogin": "balderking",
     "cacheTtlMs": 30000,
     "broadcasterIdsByChannel": {}
   },
@@ -90,17 +93,12 @@
         {
           "tipo": "texto-regex",
           "matcher": "!pix",
-          "resposta": "{{username}} só aceito pix de R$ 100 pra cima."
+          "resposta": "{{username}} o streammer só aceito pix de R$ 100 pra cima seu liso."
         },
         {
           "tipo": "texto-simples",
           "comando": "!sorteia",
           "resposta": "{{username}} sorteou {{random_viewer}}"
-        },
-        {
-          "tipo": "texto-simples",
-          "comando": "!teste",
-          "resposta": "Soou um comando de teste {{username}} {{displayName}} {{channel}} {{random_viewer}}"
         },
         {
           "tipo": "audio",
@@ -110,12 +108,12 @@
         {
           "tipo": "texto-simples",
           "comando": "!corno",
-          "resposta": "{{username}} é {{random_20_100}} corno !"
+          "resposta": "{{username}} é {{random_20_100}}% corno ! Muuuuu"
         },
         {
           "tipo": "texto-simples",
           "comando": "!cavaleiro",
-          "resposta": "{{random_pick_cavaleiros}}"
+          "resposta": "No universo de cavaleiros do zodiaco você é {{random_pick_cavaleiros}}, parabéns"
         },
         {
           "tipo": "tts",
@@ -149,20 +147,43 @@
           ]
         },
         {
+          "nome": "linah_play",
+          "valores": [
+            "Áries — Mu de Áries",
+            "Touro — Aldebaran de Touro",
+            "Gêmeos — Saga de Gêmeos",
+            "Câncer — Máscara da Morte de Câncer",
+            "Leão — Aiolia de Leão",
+            "Virgem — Shaka de Virgem",
+            "Libra — Dohko de Libra",
+            "Escorpião — Milo de Escorpião",
+            "Sagitário — Aiolos de Sagitário",
+            "Capricórnio — Shura de Capricórnio",
+            "Aquário — Camus de Aquário",
+            "Peixes — Afrodite de Peixes",
+            "Seiya de Pégaso",
+            "Shiryu de Dragão",
+            "Hyoga de Cisne",
+            "Shun de Andrômeda",
+            "Ikki de Fênix",
+            "Saori Kido (Atena)"
+          ]
+        },
+        {
           "nome": "cavaleiros",
           "valores": [
-            "♈ Áries — Mu de Áries",
-            "♉ Touro — Aldebaran de Touro",
-            "♊ Gêmeos — Saga de Gêmeos",
-            "♋ Câncer — Máscara da Morte de Câncer",
-            "♌ Leão — Aiolia de Leão",
-            "♍ Virgem — Shaka de Virgem",
-            "♎ Libra — Dohko de Libra",
-            "♏ Escorpião — Milo de Escorpião",
-            "♐ Sagitário — Aiolos de Sagitário",
-            "♑ Capricórnio — Shura de Capricórnio",
-            "♒ Aquário — Camus de Aquário",
-            "♓ Peixes — Afrodite de Peixes",
+            "Mu de Áries",
+            "Aldebaran de Touro",
+            "Saga de Gêmeos",
+            "Máscara da Morte de Câncer",
+            "Aiolia de Leão",
+            "Shaka de Virgem",
+            "Dohko de Libra",
+            "Milo de Escorpião",
+            "Aiolos de Sagitário",
+            "Shura de Capricórnio",
+            "Camus de Aquário",
+            "Afrodite de Peixes",
             "Seiya de Pégaso",
             "Shiryu de Dragão",
             "Hyoga de Cisne",

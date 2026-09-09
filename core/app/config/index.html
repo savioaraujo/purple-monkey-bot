@@ -106,6 +106,14 @@
         box-shadow: 0 8px 24px rgba(16, 8, 29, 0.25);
       }
 
+      .oauth-info .inline-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        margin-bottom: 10px;
+        flex-wrap: wrap;
+      }
+
       .oauth-info h2 {
         font-size: 16px;
         margin: 0 0 10px;
@@ -144,6 +152,27 @@
       </header>
 
       <section class="oauth-info">
+        <div class="inline-actions">
+          <button id="bot-reconnect">Reconectar bot</button>
+          <button id="bot-refresh">Atualizar status</button>
+        </div>
+        <h2>Status do bot</h2>
+        <dl>
+          <dt>Status</dt>
+          <dd id="bot-status">Carregando...</dd>
+          <dt>Conectado</dt>
+          <dd id="bot-connected">Carregando...</dd>
+          <dt>Canais</dt>
+          <dd id="bot-channels">Carregando...</dd>
+          <dt>Último erro</dt>
+          <dd id="bot-error">Nenhum</dd>
+        </dl>
+      </section>
+
+      <section class="oauth-info">
+        <div class="inline-actions">
+          <button id="renew-twitch-token">Renovar token</button>
+        </div>
         <h2>OAuth Twitch</h2>
         <dl>
           <dt>Redirect URI</dt>
@@ -214,7 +243,14 @@
       const oauthClientSecret = document.querySelector("#oauth-client-secret");
       const oauthToken = document.querySelector("#oauth-token");
       const oauthScopes = document.querySelector("#oauth-scopes");
+      const botStatusEl = document.querySelector("#bot-status");
+      const botConnectedEl = document.querySelector("#bot-connected");
+      const botChannelsEl = document.querySelector("#bot-channels");
+      const botErrorEl = document.querySelector("#bot-error");
       const connectTwitchBtn = document.getElementById("connect-twitch");
+      const renewTwitchTokenBtn = document.getElementById("renew-twitch-token");
+      const botReconnectBtn = document.getElementById("bot-reconnect");
+      const botRefreshBtn = document.getElementById("bot-refresh");
       const reloadBtn = document.getElementById("reload");
       const saveBtn = document.getElementById("save");
       const saveInlineBtn = document.getElementById("save-inline");
@@ -240,7 +276,7 @@
         const config = await response.json();
         configData = config;
         renderChannels();
-        await carregarStatusOAuth();
+        await Promise.all([carregarStatusOAuth(), carregarStatusBot()]);
         setStatus("Config carregada.", "sucesso");
       }
 
@@ -265,7 +301,25 @@
         oauthRedirectUri.textContent = status.redirectUri;
         oauthClientSecret.textContent = status.clientSecretConfigurado ? "Configurado" : "Nao configurado";
         oauthToken.textContent = status.tokenSalvo ? "Salvo" : "Nao salvo";
-        oauthScopes.textContent = status.scopes.join(", ");
+        oauthScopes.textContent = Array.isArray(status.scopes) ? status.scopes.join(", ") : "";
+      }
+
+      async function carregarStatusBot() {
+        try {
+          const response = await fetch("/api/bot/status");
+          const status = await response.json();
+          botStatusEl.textContent = status.status || "indefinido";
+          botConnectedEl.textContent = status.conectado ? "Sim" : "Não";
+          botChannelsEl.textContent = Array.isArray(status.canais) && status.canais.length
+            ? status.canais.join(", ")
+            : "Nenhum";
+          botErrorEl.textContent = status.ultimoErro || "Nenhum";
+        } catch (e) {
+          botStatusEl.textContent = "erro";
+          botConnectedEl.textContent = "Não";
+          botChannelsEl.textContent = "-";
+          botErrorEl.textContent = e.message || "Erro ao consultar o status";
+        }
       }
 
       function renderList() {
@@ -549,6 +603,41 @@
         });
       }
 
+      if (renewTwitchTokenBtn) {
+        renewTwitchTokenBtn.addEventListener('click', async () => {
+          setStatus('Iniciando renovação do token...');
+          try {
+            const response = await fetch('/auth/twitch/url');
+            const body = await response.json();
+            if (!response.ok) throw new Error(body.erro || 'Erro ao criar link de autorização.');
+            window.location.href = body.url;
+          } catch (e) {
+            setStatus(e.message, 'erro');
+          }
+        });
+      }
+
+      if (botReconnectBtn) {
+        botReconnectBtn.addEventListener('click', async () => {
+          setStatus('Reconectando o bot...');
+          try {
+            const response = await fetch('/api/bot/reconnect', { method: 'POST' });
+            const body = await response.json();
+            if (!response.ok) throw new Error(body.erro || 'Erro ao reconectar o bot.');
+            await carregarStatusBot();
+            setStatus('Bot reconectado com sucesso.', 'sucesso');
+          } catch (e) {
+            setStatus(e.message, 'erro');
+          }
+        });
+      }
+
+      if (botRefreshBtn) {
+        botRefreshBtn.addEventListener('click', () => {
+          carregarStatusBot().catch((e) => setStatus(e.message, 'erro'));
+        });
+      }
+
       if (reloadBtn) {
         reloadBtn.addEventListener('click', () => {
           carregarConfig().catch((e) => setStatus(e.message, 'erro'));
@@ -559,6 +648,9 @@
       if (saveInlineBtn) saveInlineBtn.addEventListener('click', saveConfig);
 
       carregarConfig().catch((e)=> setStatus(e.message, 'erro'));
+      window.setInterval(() => {
+        carregarStatusBot().catch(() => {});
+      }, 10000);
       // Listen to iframe saves and reload config
       window.addEventListener('message', (ev) => {
         try {

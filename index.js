@@ -3,6 +3,7 @@ const TwitchApi = require("./core/shared/service/twitch.api.js");
 const PurpleMonkeyChatBot = require("./core/shared/service/purple-monkey-chat-bot.js");
 const CanalDatabase = require("./core/shared/data/canal.data.js");
 const TwitchOAuthService = require("./core/shared/service/twitch-oauth.service.js");
+const { aplicarTokenAutorizado } = require("./core/shared/service/twitch-auth-flow.js");
 
 const servidor = new Servidor(process.env.PORT || 3000);
 const fs = require('fs');
@@ -27,13 +28,46 @@ servidor.registrarGet("/api/config", (req, res) => {
   res.json(canalDatabase.getConfig());
 });
 
+servidor.registrarGet("/api/bot/status", (req, res) => {
+  if (!chatBot) {
+    return res.json({
+      conectado: false,
+      status: "inicializando",
+      ultimoErro: null,
+      username: "purplemonkeybot",
+      canais: [],
+    });
+  }
+
+  res.json(chatBot.getStatusResumo());
+});
+
+servidor.registrarPost("/api/bot/reconnect", async (req, res) => {
+  try {
+    if (!chatBot) {
+      return res.status(503).json({ erro: "Bot ainda não inicializado." });
+    }
+
+    const configAtual = canalDatabase.getConfig();
+    const token = (configAtual.twitch && configAtual.twitch.userAccessToken) || "";
+    if (!token) {
+      return res.status(400).json({ erro: "Nenhum token de acesso salvo. Conecte o bot via OAuth primeiro." });
+    }
+
+    chatBot.atualizarCanais(canalDatabase.getCanais());
+    const status = await chatBot.reconectar(servidor, token);
+    res.json(status);
+  } catch (error) {
+    res.status(500).json({ erro: error.message });
+  }
+});
+
 servidor.registrarPost("/api/config", async (req, res) => {
   try {
     const configSalva = canalDatabase.salvarConfig(req.body);
     if (chatBot) {
       chatBot.atualizarCanais(canalDatabase.getCanais());
-      chatBot.atualizarConfigTwitch(configSalva.twitch);
-      await chatBot.atualizarTokenChat(configSalva.twitch.userAccessToken, servidor);
+      await aplicarTokenAutorizado(chatBot, configSalva.twitch, servidor);
     }
     res.json(configSalva);
   } catch (error) {
@@ -76,8 +110,7 @@ servidor.registrarGet("/auth/twitch/callback", async (req, res) => {
       getBaseUrl(req)
     );
     if (chatBot) {
-      chatBot.atualizarConfigTwitch(configSalva.twitch);
-      await chatBot.atualizarTokenChat(configSalva.twitch.userAccessToken, servidor);
+      await aplicarTokenAutorizado(chatBot, configSalva.twitch, servidor);
     }
 
     res.send(
@@ -125,15 +158,21 @@ servidor.start();
 
 const canais = canalDatabase.getCanais();
 const configInicial = canalDatabase.getConfig();
+const senhaBot = (configInicial.twitch && configInicial.twitch.userAccessToken) || "";
 
-chatBot = new PurpleMonkeyChatBot(
-  "purplemonkeybot",
-  configInicial.twitch.userAccessToken || "oauth:xuaovdy1ois22qgq75anpx1lj0rz2p",
-  canais,
-  configInicial.twitch
-);
+try {
+  chatBot = new PurpleMonkeyChatBot(
+    "purplemonkeybot",
+    senhaBot,
+    canais,
+    configInicial.twitch
+  );
 
-chatBot.start(servidor);
+  chatBot.start(servidor);
+} catch (error) {
+  console.error("Erro ao iniciar o bot:", error);
+  chatBot = null;
+}
 
 function getBaseUrl(req) {
   return req.protocol + "://" + req.get("host");
