@@ -16,10 +16,10 @@
       "moderation:read",
       "channel:moderate"
     ],
-    "userAccessToken": "nxvg0rwp5fra7g5tfubtca4l7oyjjo",
-    "refreshToken": "4meiivymhh0g7rcrrbspgwdw72qoe0fhtjapyx59082w6qqdg9",
+    "userAccessToken": "w94561jcdbv5yl7kn1cztl5vzyk6si",
+    "refreshToken": "1q86ctkqy9c0gic0wz4anhfb501fa2ywtf1rfibrajj3tibv7w",
     "tokenType": "bearer",
-    "tokenExpiresAt": "2026-09-10T01:14:47.031Z",
+    "tokenExpiresAt": "2026-09-12T01:13:20.804Z",
     "moderatorId": "491852579",
     "moderatorLogin": "balderking",
     "cacheTtlMs": 30000,
@@ -191,6 +191,18 @@
             "Ikki de Fênix",
             "Saori Kido (Atena)"
           ]
+        }
+      ],
+      "recompensas": [
+        {
+          "titulo": "GG",
+          "custo": 200,
+          "rewardId": "e3dcbe91-a2a7-442b-92c5-92eef6abfb03",
+          "duracao": 5,
+          "midia": "",
+          "audio": "",
+          "descricao": "GG",
+          "ativo": true
         }
       ]
     }

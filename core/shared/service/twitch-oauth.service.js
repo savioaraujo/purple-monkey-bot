@@ -6,7 +6,7 @@ class TwitchOAuthService {
     this.states = new Set();
   }
 
-  criarUrlAutorizacao(baseUrl) {
+  criarUrlAutorizacao(baseUrl, options) {
     const twitch = this.getTwitchConfig();
     const clientId = this.getClientId(twitch);
     const redirectUri = this.getRedirectUri(twitch, baseUrl);
@@ -26,7 +26,7 @@ class TwitchOAuthService {
     url.searchParams.set("scope", scopes.join(" "));
     url.searchParams.set("state", state);
 
-    if (twitch.forceVerify) {
+    if (twitch.forceVerify || (options && options.forceVerify)) {
       url.searchParams.set("force_verify", "true");
     }
 
@@ -171,10 +171,12 @@ class TwitchOAuthService {
       "user:read:chat",
       "moderation:read",
       "channel:moderate",
+      "channel:read:redemptions",
+      "channel:manage:redemptions",
     ];
 
     if (Array.isArray(twitch.scopes) && twitch.scopes.length) {
-      return twitch.scopes;
+      return [...new Set(twitch.scopes.concat(defaultScopes))];
     }
 
     return defaultScopes;

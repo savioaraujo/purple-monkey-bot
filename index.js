@@ -4,6 +4,7 @@ const PurpleMonkeyChatBot = require("./core/shared/service/purple-monkey-chat-bo
 const CanalDatabase = require("./core/shared/data/canal.data.js");
 const TwitchOAuthService = require("./core/shared/service/twitch-oauth.service.js");
 const { aplicarTokenAutorizado } = require("./core/shared/service/twitch-auth-flow.js");
+const TwitchRewardsService = require("./core/shared/service/twitch-rewards.service.js");
 
 const servidor = new Servidor(process.env.PORT || 3000);
 const fs = require('fs');
@@ -11,8 +12,10 @@ const path = require('path');
 const canalDatabase = new CanalDatabase();
 const twitchOAuthService = new TwitchOAuthService(canalDatabase);
 let chatBot;
+const twitchRewardsService = new TwitchRewardsService(canalDatabase, servidor);
 
 servidor.registrarApp("/alert", __dirname + "/core/app/alert/index.html");
+servidor.registrarApp("/alert/rewards", __dirname + "/core/app/alert/index.html");
 servidor.registrarApp("/tts", __dirname + "/core/app/tts/index.html");
 servidor.registrarApp("/config", __dirname + "/core/app/config/index.html");
 // Tela MVC para CRUD de comandos de texto simples
@@ -23,6 +26,8 @@ servidor.registrarApp("/config/audio-commands", __dirname + "/core/app/config/au
 servidor.registrarConteudoPublico(__dirname + "/core/app/config/audio-commands", "/config/audio-commands");
 servidor.registrarConteudoPublico(__dirname + "/core/app/alert", "/alert");
 servidor.registrarConteudoPublico(__dirname + "/core/app/alert/sounds/");
+servidor.registrarApp("/config/rewards", __dirname + "/core/app/config/rewards/index.html");
+servidor.registrarConteudoPublico(__dirname + "/core/app/config/rewards", "/config/rewards");
 
 servidor.registrarGet("/api/config", (req, res) => {
   res.json(canalDatabase.getConfig());
@@ -69,6 +74,7 @@ servidor.registrarPost("/api/config", async (req, res) => {
       chatBot.atualizarCanais(canalDatabase.getCanais());
       await aplicarTokenAutorizado(chatBot, configSalva.twitch, servidor);
     }
+    twitchRewardsService.reiniciar();
     res.json(configSalva);
   } catch (error) {
     res.status(400).json({ erro: error.message });
@@ -79,7 +85,7 @@ servidor.registrarGet("/auth/twitch/url", (req, res) => {
   try {
     const baseUrl = getBaseUrl(req);
     res.json({
-      url: twitchOAuthService.criarUrlAutorizacao(baseUrl),
+      url: twitchOAuthService.criarUrlAutorizacao(baseUrl, { forceVerify: req.query.force_verify === "true" }),
       status: twitchOAuthService.getStatus(baseUrl),
     });
   } catch (error) {
@@ -112,6 +118,7 @@ servidor.registrarGet("/auth/twitch/callback", async (req, res) => {
     if (chatBot) {
       await aplicarTokenAutorizado(chatBot, configSalva.twitch, servidor);
     }
+    twitchRewardsService.reiniciar();
 
     res.send(
       "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>Twitch conectada</title></head><body><h1>Twitch conectada</h1><p>Token do bot salvo com sucesso. Você já pode fechar esta aba.</p><p><a href=\"/config\">Voltar para a configuração</a></p></body></html>"
@@ -125,6 +132,40 @@ servidor.registrarGet("/auth/twitch/callback", async (req, res) => {
           escapeHtml(error.message) +
           "</p><p><a href=\"/config\">Voltar para a configuração</a></p></body></html>"
       );
+  }
+});
+
+servidor.registrarGet("/api/rewards/status", (req, res) => {
+  res.json(twitchRewardsService.getStatus());
+});
+
+servidor.registrarGet("/api/rewards/logs", (req, res) => {
+  res.json(twitchRewardsService.getLogs());
+});
+
+servidor.registrarPost("/api/rewards/create", async (req, res) => {
+  try {
+    const recompensa = await twitchRewardsService.criarRecompensa(req.body || {});
+    res.json(recompensa);
+  } catch (error) {
+    res.status(400).json({ erro: error.message });
+  }
+});
+
+servidor.registrarPost("/api/rewards/sync", async (req, res) => {
+  try {
+    res.json(await twitchRewardsService.salvarRecompensa(req.body || {}));
+  } catch (error) {
+    res.status(400).json({ erro: error.message });
+  }
+});
+
+servidor.registrarPost("/api/rewards/delete", async (req, res) => {
+  try {
+    await twitchRewardsService.excluirRecompensa(req.body && req.body.rewardId);
+    res.json({ sucesso: true });
+  } catch (error) {
+    res.status(400).json({ erro: error.message });
   }
 });
 
@@ -169,6 +210,7 @@ try {
   );
 
   chatBot.start(servidor);
+  twitchRewardsService.iniciar();
 } catch (error) {
   console.error("Erro ao iniciar o bot:", error);
   chatBot = null;

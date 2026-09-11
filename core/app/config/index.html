@@ -145,6 +145,8 @@
       <header>
         <h1>Configuração dos comandos</h1>
         <div class="actions">
+          <button id="open-alert-window" title="Abrir o overlay de áudio, TTS, imagens, GIFs e vídeos">Abrir alertas</button>
+          <button id="open-rewards-window" title="Abrir o cadastro de alertas por pontos">Abrir recompensas</button>
           <button id="connect-twitch">Conectar Twitch</button>
           <button id="reload">Recarregar</button>
           <button id="save" class="primary">Salvar</button>
@@ -197,6 +199,7 @@
             <button data-type="texto-simples">Texto simples</button>
             <button data-type="texto-regex">Texto regex</button>
             <button data-type="tts">TTS</button>
+            <button data-type="recompensas">Recompensas por pontos</button>
           </div>
 
           <div style="margin-top:14px;">
@@ -248,6 +251,8 @@
       const botChannelsEl = document.querySelector("#bot-channels");
       const botErrorEl = document.querySelector("#bot-error");
       const connectTwitchBtn = document.getElementById("connect-twitch");
+      const openAlertWindowBtn = document.getElementById("open-alert-window");
+      const openRewardsWindowBtn = document.getElementById("open-rewards-window");
       const renewTwitchTokenBtn = document.getElementById("renew-twitch-token");
       const botReconnectBtn = document.getElementById("bot-reconnect");
       const botRefreshBtn = document.getElementById("bot-refresh");
@@ -264,6 +269,17 @@
       let configData = null;
       let currentChannelIndex = 0;
       let currentType = 'audio';
+
+      function abrirJanela(nome, rota, largura, altura) {
+        const esquerda = Math.max(0, Math.round((window.screen.width - largura) / 2));
+        const topo = Math.max(0, Math.round((window.screen.height - altura) / 2));
+        const janela = window.open(rota, nome, 'popup=yes,resizable=yes,scrollbars=yes,width=' + largura + ',height=' + altura + ',left=' + esquerda + ',top=' + topo);
+        if (!janela) {
+          setStatus('O navegador bloqueou a nova janela. Permita pop-ups para este endereço.', 'erro');
+          return;
+        }
+        janela.focus();
+      }
 
       function setStatus(message, type) {
         statusEl.textContent = message;
@@ -327,7 +343,7 @@
         const canal = (configData.canais || [])[currentChannelIndex];
         if (!canal) return;
 
-        const supportedTypes = ['texto-simples', 'texto-regex', 'audio', 'tts'];
+        const supportedTypes = ['texto-simples', 'texto-regex', 'audio', 'tts', 'recompensas'];
         if (!supportedTypes.includes(currentType)) {
           editorArea.innerHTML = '';
           return;
@@ -338,6 +354,7 @@
       }
 
       function getIframeSrcForType(type) {
+        if (type === 'recompensas') return '/config/rewards';
         if (type === 'texto-simples') return '/config/text-commands';
         if (type === 'texto-regex') return '/config/text-commands?type=texto-regex';
         if (type === 'tts') return '/config/text-commands?type=tts';
@@ -589,6 +606,14 @@
       if (saveListBtn) saveListBtn.addEventListener('click', persistList);
       if (deleteListBtn) deleteListBtn.addEventListener('click', deleteSelectedList);
 
+      if (openAlertWindowBtn) {
+        openAlertWindowBtn.addEventListener('click', () => abrirJanela('purple-monkey-alerts', '/alert/rewards', 960, 540));
+      }
+
+      if (openRewardsWindowBtn) {
+        openRewardsWindowBtn.addEventListener('click', () => abrirJanela('purple-monkey-rewards', '/config/rewards', 920, 720));
+      }
+
       if (connectTwitchBtn) {
         connectTwitchBtn.addEventListener('click', async () => {
           setStatus('Abrindo conexão com a Twitch...');
@@ -607,7 +632,7 @@
         renewTwitchTokenBtn.addEventListener('click', async () => {
           setStatus('Iniciando renovação do token...');
           try {
-            const response = await fetch('/auth/twitch/url');
+            const response = await fetch('/auth/twitch/url?force_verify=true');
             const body = await response.json();
             if (!response.ok) throw new Error(body.erro || 'Erro ao criar link de autorização.');
             window.location.href = body.url;

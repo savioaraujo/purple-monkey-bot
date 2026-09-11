@@ -1,15 +1,21 @@
 (function () {
   const socket = io();
+  const somenteRecompensas = window.location.pathname === "/alert/rewards";
   const fila = [];
   const statusDot = document.querySelector("#status-dot");
   const statusTitle = document.querySelector("#status-title");
   const statusDetail = document.querySelector("#status-detail");
+  const mediaStage = document.querySelector("#media-stage");
+  const alertImage = document.querySelector("#alert-image");
+  const alertVideo = document.querySelector("#alert-video");
+  const alertCaption = document.querySelector("#alert-caption");
 
   let tocando = false;
   let audioAtual = null;
+  let timeoutAtual = null;
 
   socket.on("connect", () => {
-    atualizarStatus("Aguardando áudio", "Fila vazia", "idle");
+    atualizarStatus("Aguardando alerta", "Fila vazia", "idle");
   });
 
   socket.on("disconnect", () => {
@@ -17,8 +23,14 @@
   });
 
   socket.on("alert", (payload) => {
+    if (somenteRecompensas && (!payload || payload.tipo !== "midia")) {
+      return;
+    }
+
     if (payload && payload.tipo === "tts") {
       adicionarNaFilaTTS(payload);
+    } else if (payload && payload.tipo === "midia") {
+      adicionarNaFilaMidia(payload);
     } else {
       adicionarNaFila(payload);
     }
@@ -34,6 +46,13 @@
     const metadados = typeof payload === "object" && payload ? payload : {};
 
     fila.push({ tipo: "audio", audio: normalizarAudio(audio), comando: metadados.comando, usuario: metadados.usuario });
+    atualizarDetalheFila();
+    tocarProximo();
+  }
+
+  function adicionarNaFilaMidia(payload) {
+    if (!payload.midia && !payload.audio) return;
+    fila.push({ tipo: "midia", midia: payload.midia ? normalizarAudio(payload.midia) : "", audio: payload.audio ? normalizarAudio(payload.audio) : "", duracao: Math.max(1, Number(payload.duracao) || 8), usuario: payload.usuario || "", recompensa: payload.recompensa || "Alerta" });
     atualizarDetalheFila();
     tocarProximo();
   }
@@ -87,6 +106,8 @@
           finalizarAudioAtual();
         });
       }
+    } else if (item.tipo === "midia") {
+      tocarMidia(item);
     } else if (item.tipo === "tts") {
       const texto = item.texto;
       const options = Object.assign(
@@ -130,6 +151,26 @@
     }
   }
 
+  function tocarMidia(item) {
+    const ehVideo = /\.(mp4|webm|ogg|mov)(?:\?|$)/i.test(item.midia);
+    mediaStage.classList.add("visible");
+    alertCaption.textContent = item.usuario ? item.usuario + " resgatou " + item.recompensa : item.recompensa;
+    atualizarStatus("Reproduzindo recompensa", item.recompensa + " - " + fila.length + " na fila", "playing");
+    if (item.midia) {
+      if (ehVideo) {
+        alertVideo.src = item.midia; alertVideo.classList.add("visible"); alertVideo.currentTime = 0;
+        alertVideo.play().catch((error) => console.error("Vídeo bloqueado:", error));
+      } else {
+        alertImage.src = item.midia; alertImage.classList.add("visible");
+      }
+    }
+    if (item.audio) {
+      audioAtual = new Audio(item.audio); audioAtual.preload = "auto";
+      audioAtual.play().catch((error) => console.error("Áudio bloqueado:", error));
+    }
+    timeoutAtual = setTimeout(finalizarAudioAtual, item.duracao * 1000);
+  }
+
   function speakWithWebAPI(texto, options) {
     const utter = new SpeechSynthesisUtterance(texto);
     if (options && options.language) {
@@ -162,19 +203,24 @@
   }
 
   function finalizarAudioAtual() {
-    if (audioAtual) {
+    clearTimeout(timeoutAtual);
+    timeoutAtual = null;
+    if (audioAtual && typeof audioAtual.pause === "function") {
       audioAtual.pause();
-      audioAtual.removeAttribute("src");
-      audioAtual.load();
+      if (typeof audioAtual.removeAttribute === "function") audioAtual.removeAttribute("src");
+      if (typeof audioAtual.load === "function") audioAtual.load();
       audioAtual = null;
     }
+    alertVideo.pause(); alertVideo.removeAttribute("src"); alertVideo.load();
+    alertImage.removeAttribute("src"); alertImage.classList.remove("visible");
+    alertVideo.classList.remove("visible"); mediaStage.classList.remove("visible");
 
     tocando = false;
 
     if (fila.length > 0) {
       tocarProximo();
     } else {
-      atualizarStatus("Aguardando áudio", "Fila vazia", "idle");
+      atualizarStatus("Aguardando alerta", "Fila vazia", "idle");
     }
   }
 

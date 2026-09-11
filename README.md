@@ -33,6 +33,7 @@ node index.js
 - `core/shared/service/purple-monkey-chat-bot.js` — lógica do bot e execução de comandos.
 - `core/shared/service/tts.service.js` — geração de TTS.
 - `core/app/alert/` — UI de alertas e sons.
+- `core/app/config/rewards/` — cadastro de recompensas por pontos com imagem, GIF ou vídeo e áudio.
 
 ## Comandos TTS
 
@@ -65,6 +66,8 @@ node index.js
 ## Configuração rápida
 
 - O token Twitch deve estar no formato `oauth:xxxxx`. O bot aplica `oauth:` automaticamente se faltar.
+- Para recompensas por pontos, autentique a conta do próprio broadcaster em `/config`, use **Renovar token** para consentir os escopos `channel:read:redemptions` e `channel:manage:redemptions`, e cadastre/crie a recompensa na opção **Recompensas por pontos**. O overlay `/alert` recebe os resgates via EventSub WebSocket, sem exigir webhook público.
+- Use `/alert/rewards` como fonte de navegador no OBS para reproduzir somente os alertas de recompensas, em fila, com imagem/GIF/vídeo e áudio simultâneos. A rota `/alert` continua sendo o player unificado de áudio, TTS e recompensas.
 
 ## Próximos passos
 
