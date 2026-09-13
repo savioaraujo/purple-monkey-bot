@@ -433,9 +433,9 @@
 
       function getDefaultTtsOptions() {
         return {
-          provider: 'xai',
-          voice: 'eve',
-          language: 'pt-br',
+          provider: 'puter',
+          voice: 'Vitoria',
+          language: 'pt-BR',
           model: null,
           instructions: null
         };
@@ -454,8 +454,13 @@
           }
           return Object.assign({}, getDefaultTtsOptions(), parsed);
         } catch (e) {
-          throw new Error('JSON de options inválido. Ex.: {"provider":"xai","voice":"eve","language":"pt-br"}');
+          throw new Error('JSON de options inválido. Ex.: {"provider":"xai","voice":"Vitoria","language":"pt-BR"}');
         }
+      }
+
+      async function carregarOpcoesTts(providerAtual = 'puter', languageAtual = 'pt-BR') {
+        const response = await fetch('/api/tts/options?provider=' + encodeURIComponent(providerAtual) + '&language=' + encodeURIComponent(languageAtual));
+        return response.ok ? response.json() : { providers: [], languages: [], voices: [] };
       }
 
       function openEditor(def, globalIndex) {
@@ -505,14 +510,88 @@
         if (def.tipo === 'tts' || def.tipo === 'chat-tts') {
           const optionsLabel = document.createElement('div');
           optionsLabel.style.gridColumn='1/-1';
-          optionsLabel.innerHTML = '<strong>Options (JSON)</strong><br><span style="color:#c9c3b8; font-size:12px">Opcional. Se vazio, usa os defaults: provider xai, voice eve, language pt-br.</span>';
+          optionsLabel.innerHTML = '<strong>Options (JSON)</strong><br><span style="color:#c9c3b8; font-size:12px">Escolha provider, idioma e voz abaixo; o JSON é preenchido automaticamente.</span>';
           const optionsField = document.createElement('textarea');
           optionsField.style.gridColumn='1/-1';
           optionsField.rows = 6;
-          optionsField.placeholder = '{"provider":"xai","voice":"eve","language":"pt-br"}';
+          optionsField.placeholder = '{"provider":"xai","voice":"Vitoria","language":"pt-BR"}';
           const optionsObj = Object.assign({}, getDefaultTtsOptions(), def.options || {});
           optionsField.value = JSON.stringify(optionsObj, null, 2);
+
+          const providerWrap = document.createElement('div');
+          const languageWrap = document.createElement('div');
+          const voiceWrap = document.createElement('div');
+          providerWrap.innerHTML = '<label>Provider</label>';
+          languageWrap.innerHTML = '<label>Idioma</label>';
+          voiceWrap.innerHTML = '<label>Voz</label>';
+
+          const providerSelect = document.createElement('select');
+          const languageSelect = document.createElement('select');
+          const voiceSelect = document.createElement('select');
+
+          const fillSelect = (select, values, selected) => {
+            select.innerHTML = '';
+            values.forEach((value) => {
+              const option = document.createElement('option');
+              option.value = value;
+              option.textContent = value;
+              select.appendChild(option);
+            });
+            if (selected && values.includes(selected)) select.value = selected;
+            else if (values.length) select.value = values[0];
+          };
+
+          const syncFromApi = async () => {
+            const provider = providerSelect.value || 'puter';
+            const language = languageSelect.value || 'pt-BR';
+            const apiOptions = await carregarOpcoesTts(provider, language);
+            fillSelect(languageSelect, apiOptions.languages || [], optionsObj.language || 'pt-BR');
+            fillSelect(voiceSelect, apiOptions.voices || [], optionsObj.voice || 'Vitoria');
+            optionsField.value = JSON.stringify({
+              provider: providerSelect.value,
+              language: languageSelect.value,
+              voice: voiceSelect.value,
+              model: null,
+              instructions: null,
+            }, null, 2);
+          };
+
+          providerSelect.innerHTML = ['puter', 'local'].map((value) => '<option value="' + value + '">' + value + '</option>').join('');
+          providerSelect.value = optionsObj.provider || 'puter';
+          languageSelect.value = optionsObj.language || 'pt-BR';
+          voiceSelect.value = optionsObj.voice || 'Vitoria';
+          carregarOpcoesTts(providerSelect.value, optionsObj.language || 'pt-BR').then((apiOptions) => {
+            fillSelect(languageSelect, apiOptions.languages || [], optionsObj.language || 'pt-BR');
+            fillSelect(voiceSelect, apiOptions.voices || [], optionsObj.voice || 'Vitoria');
+            optionsField.value = JSON.stringify({
+              provider: providerSelect.value,
+              language: languageSelect.value,
+              voice: voiceSelect.value,
+              model: null,
+              instructions: null,
+            }, null, 2);
+          });
+
+          providerSelect.addEventListener('change', () => {
+            carregarOpcoesTts(providerSelect.value, 'pt-BR').then((apiOptions) => {
+              fillSelect(languageSelect, apiOptions.languages || [], 'pt-BR');
+              fillSelect(voiceSelect, apiOptions.voices || [], apiOptions.voices && apiOptions.voices[0] || 'Vitoria');
+              optionsField.value = JSON.stringify({ provider: providerSelect.value, language: languageSelect.value, voice: voiceSelect.value, model: null, instructions: null }, null, 2);
+            });
+          });
+          languageSelect.addEventListener('change', syncFromApi);
+          voiceSelect.addEventListener('change', () => {
+            optionsField.value = JSON.stringify({ provider: providerSelect.value, language: languageSelect.value, voice: voiceSelect.value, model: null, instructions: null }, null, 2);
+          });
+
+          providerWrap.appendChild(providerSelect);
+          languageWrap.appendChild(languageSelect);
+          voiceWrap.appendChild(voiceSelect);
+
           form.appendChild(optionsLabel);
+          form.appendChild(providerWrap);
+          form.appendChild(languageWrap);
+          form.appendChild(voiceWrap);
           form.appendChild(optionsField);
         }
 

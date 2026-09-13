@@ -1,13 +1,15 @@
 const FormatterUtils = require("../../shared/utils/formatter.utils");
 const RespostaTexto = require("./resposta-texto.model");
+const ComandoBase = require("./comando-base.model");
 
-class ComandoChatTTS {
-  constructor(options) {
+class ComandoChatTTS extends ComandoBase {
+  constructor(options, config = {}) {
+    super(config);
     this.options = Object.assign(
       {
-        provider: "xai",
-        voice: "eve",
-        language: "pt-br",
+        provider: "puter",
+        voice: "Vitoria",
+        language: "pt-BR",
         model: null,
         instructions: null,
       },

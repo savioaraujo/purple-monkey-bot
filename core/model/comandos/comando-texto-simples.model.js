@@ -1,11 +1,14 @@
+const ComandoBase = require("./comando-base.model");
+
 /**
  * Comandos de textos simples são usados apenas para receber e emitir uma resposta no próprio chat
  * de forma direta. Ex :
  * chat : !teste
  * response : Retornando um texto de teste.
  */
-class ComandoTextoSimples {
-  constructor(comando, resposta, matcher) {
+class ComandoTextoSimples extends ComandoBase {
+  constructor(comando, resposta, matcher, config = {}) {
+    super(config);
     this.comando = comando;
     this.resposta = resposta;
     this.matcher = matcher;

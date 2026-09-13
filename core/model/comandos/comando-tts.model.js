@@ -1,12 +1,15 @@
-class ComandoTTS {
-  constructor(comando, resposta, options) {
+const ComandoBase = require("./comando-base.model");
+
+class ComandoTTS extends ComandoBase {
+  constructor(comando, resposta, options, config = {}) {
+    super(config);
     this.comando = comando;
     this.resposta = resposta;
     this.options = Object.assign(
       {
-        provider: "xai",
-        voice: "eve",
-        language: "pt-br",
+        provider: "puter",
+        voice: "Vitoria",
+        language: "pt-BR",
         model: null,
         instructions: null,
       },

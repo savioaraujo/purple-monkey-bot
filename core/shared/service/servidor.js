@@ -6,6 +6,7 @@ class Servidor {
   constructor(porta) {
     this.porta = porta;
     this.sockets = [];
+    this.ttsProcessorSocket = null;
     this.app = express();
     this.app.use(express.json({ limit: "100mb" }));
     this.server = http.createServer(this.app);
@@ -15,8 +16,27 @@ class Servidor {
       console.log("Conectando novo usuário...");
       this.sockets.push(socket);
       console.log(this.sockets.length);
+
+      socket.on("tts:register-processor", () => {
+        this.ttsProcessorSocket = socket;
+        console.log("[tts] processador registrado para geração de áudio. socketId=" + socket.id);
+      });
+
+      socket.on("tts:ready", (payload) => {
+        const payloadTts = {
+          tipo: "tts",
+          ...(payload || {}),
+        };
+
+        console.log("[tts] áudio processado e pronto para o overlay:", payloadTts && payloadTts.comando ? payloadTts.comando : "sem-comando");
+        this.notificarSockets("alert", payloadTts);
+      });
+
       socket.on("disconnect", () => {
         console.log("Desconectando usuário... ");
+        if (this.ttsProcessorSocket === socket) {
+          this.ttsProcessorSocket = null;
+        }
         let ultimo = this.sockets[this.sockets.length - 1];
         this.sockets[this.sockets.indexOf(socket)] = ultimo;
         this.sockets.pop();
@@ -47,6 +67,10 @@ class Servidor {
     this.app.post(path, callback);
   }
 
+  registrarDelete(path, callback) {
+    this.app.delete(path, callback);
+  }
+
   start() {
     this.server.listen(this.porta, () => {
       console.log("Servidor up na porta *:" + this.porta);
@@ -57,6 +81,21 @@ class Servidor {
     this.sockets.forEach((socket) => {
       socket.emit(evento, msg);
     });
+  }
+
+  hasTTSProcessor() {
+    return Boolean(this.ttsProcessorSocket);
+  }
+
+  notificarProcessadorTts(msg) {
+    if (!this.ttsProcessorSocket) {
+      console.log("[tts] pedido recusado: processador não conectado. payload=", msg && msg.comando ? msg.comando : "sem-comando");
+      return false;
+    }
+
+    console.log("[tts] enviando pedido para processador. comando=", msg && msg.comando ? msg.comando : "sem-comando");
+    this.ttsProcessorSocket.emit("tts:request", msg);
+    return true;
   }
 }
 

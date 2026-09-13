@@ -1,5 +1,6 @@
 const MacroUtils = require("../../shared/utils/macro.utils");
 const Matcher = require("../../shared/utils/matcher.utils");
+const ComandoBase = require("./comando-base.model");
 
 /**
  * Comandos de textos simples são usados apenas para receber e emitir uma resposta no próprio chat
@@ -7,8 +8,9 @@ const Matcher = require("../../shared/utils/matcher.utils");
  * chat : !teste
  * response : Retornando um texto de teste.
  */
-class ComandoTexto {
-  constructor(matcher, resposta) {
+class ComandoTexto extends ComandoBase {
+  constructor(matcher, resposta, config = {}) {
+    super(config);
     this.matcher = new Matcher(matcher);
     this.resposta = resposta;
   }

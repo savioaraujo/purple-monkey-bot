@@ -5,10 +5,24 @@ const CanalDatabase = require("./core/shared/data/canal.data.js");
 const TwitchOAuthService = require("./core/shared/service/twitch-oauth.service.js");
 const { aplicarTokenAutorizado } = require("./core/shared/service/twitch-auth-flow.js");
 const TwitchRewardsService = require("./core/shared/service/twitch-rewards.service.js");
+const TTSService = require("./core/shared/service/tts.service.js");
+const TTSOptionsService = require("./core/shared/service/tts-options.service.js");
+const { listarArquivosTts, excluirArquivoTts } = require("./core/shared/service/tts-file-store.js");
 
 const servidor = new Servidor(process.env.PORT || 3000);
 const fs = require('fs');
 const path = require('path');
+const ttsGeneratedDir = path.join(__dirname, "core", "app", "tts", "generated");
+const ttsProcessorDir = path.join(__dirname, "core", "app", "tts-processor", "files");
+const alertSoundsDir = path.join(__dirname, "core", "app", "alert", "sounds");
+if (!fs.existsSync(ttsGeneratedDir)) {
+  fs.mkdirSync(ttsGeneratedDir, { recursive: true });
+}
+if (!fs.existsSync(ttsProcessorDir)) {
+  fs.mkdirSync(ttsProcessorDir, { recursive: true });
+}
+const ttsService = new TTSService();
+const ttsOptionsService = new TTSOptionsService();
 const canalDatabase = new CanalDatabase();
 const twitchOAuthService = new TwitchOAuthService(canalDatabase);
 let chatBot;
@@ -16,7 +30,8 @@ const twitchRewardsService = new TwitchRewardsService(canalDatabase, servidor);
 
 servidor.registrarApp("/alert", __dirname + "/core/app/alert/index.html");
 servidor.registrarApp("/alert/rewards", __dirname + "/core/app/alert/index.html");
-servidor.registrarApp("/tts", __dirname + "/core/app/tts/index.html");
+servidor.registrarApp("/tts", __dirname + "/core/app/tts-processor/index.html");
+servidor.registrarApp("/tts-processor", __dirname + "/core/app/tts-processor/index.html");
 servidor.registrarApp("/config", __dirname + "/core/app/config/index.html");
 // Tela MVC para CRUD de comandos de texto simples
 servidor.registrarApp("/config/text-commands", __dirname + "/core/app/config/text-commands/index.html");
@@ -25,12 +40,139 @@ servidor.registrarConteudoPublico(__dirname + "/core/app/config/text-commands", 
 servidor.registrarApp("/config/audio-commands", __dirname + "/core/app/config/audio-commands/index.html");
 servidor.registrarConteudoPublico(__dirname + "/core/app/config/audio-commands", "/config/audio-commands");
 servidor.registrarConteudoPublico(__dirname + "/core/app/alert", "/alert");
-servidor.registrarConteudoPublico(__dirname + "/core/app/alert/sounds/");
+servidor.registrarConteudoPublico(alertSoundsDir, "/alert/sounds");
+servidor.registrarConteudoPublico(ttsGeneratedDir, "/tts/generated");
+servidor.registrarConteudoPublico(ttsProcessorDir, "/tts-processor/files");
 servidor.registrarApp("/config/rewards", __dirname + "/core/app/config/rewards/index.html");
 servidor.registrarConteudoPublico(__dirname + "/core/app/config/rewards", "/config/rewards");
 
 servidor.registrarGet("/api/config", (req, res) => {
   res.json(canalDatabase.getConfig());
+});
+
+servidor.registrarGet("/api/tts/options", (req, res) => {
+  try {
+    const provider = req.query.provider || "puter";
+    const language = req.query.language || "pt-BR";
+    const options = ttsOptionsService.getOptions(provider, language);
+    res.json(options);
+  } catch (error) {
+    res.status(500).json({ erro: error.message });
+  }
+});
+
+servidor.registrarGet("/api/tts/fila", (req, res) => {
+  try {
+    const itens = listarArquivosTts([ttsGeneratedDir, ttsProcessorDir]);
+    res.json({ itens: itens.map((item) => ({
+      ...item,
+      data: new Date(item.data).toLocaleString(),
+    })) });
+  } catch (error) {
+    res.status(500).json({ erro: error.message });
+  }
+});
+
+servidor.registrarPost("/api/tts/save", async (req, res) => {
+  try {
+    const body = req.body || {};
+    const nomeArquivo = String(body.nomeArquivo || `tts-${Date.now()}.mp3`).replace(/[^a-zA-Z0-9._-]/g, "_");
+    const texto = String(body.texto || "");
+    const usuario = String(body.usuario || "Sistema");
+    const audio = String(body.audio || "");
+    const audioData = body.audioData || "";
+
+    const filePath = path.join(ttsGeneratedDir, nomeArquivo);
+    const metaPath = path.join(ttsGeneratedDir, `${path.basename(nomeArquivo, path.extname(nomeArquivo))}.json`);
+
+    if (audioData) {
+      const base64 = String(audioData).replace(/^data:audio\/[^;]+;base64,/, "").replace(/^data:audio\/[^;]+,/, "");
+      const buffer = Buffer.from(base64, "base64");
+      fs.writeFileSync(filePath, buffer);
+    } else if (audio && /^https?:\/\//i.test(audio)) {
+      const resposta = await fetch(audio);
+      const buffer = Buffer.from(await resposta.arrayBuffer());
+      fs.writeFileSync(filePath, buffer);
+    } else if (audio && /^data:audio\//i.test(audio)) {
+      const base64 = String(audio).replace(/^data:audio\/[^;]+;base64,/, "").replace(/^data:audio\/[^;]+,/, "");
+      const buffer = Buffer.from(base64, "base64");
+      fs.writeFileSync(filePath, buffer);
+    }
+
+    fs.writeFileSync(metaPath, JSON.stringify({ texto, usuario, nomeArquivo, data: new Date().toISOString() }, null, 2));
+    res.json({ ok: true, audio: `/tts/generated/${encodeURIComponent(nomeArquivo)}`, filePath });
+  } catch (error) {
+    res.status(500).json({ erro: error.message });
+  }
+});
+
+servidor.registrarDelete("/api/tts/clear", (req, res) => {
+  try {
+    const diretorios = [ttsGeneratedDir, ttsProcessorDir];
+    let removidos = 0;
+
+    for (const diretorio of diretorios) {
+      if (!fs.existsSync(diretorio)) {
+        continue;
+      }
+
+      for (const nome of fs.readdirSync(diretorio)) {
+        const fullPath = path.join(diretorio, nome);
+        const stat = fs.statSync(fullPath);
+        if (stat.isFile()) {
+          fs.unlinkSync(fullPath);
+          removidos += 1;
+        }
+      }
+    }
+
+    res.json({ ok: true, removidos });
+  } catch (error) {
+    res.status(500).json({ erro: error.message });
+  }
+});
+
+servidor.registrarDelete("/api/tts/clear/:filePath", (req, res) => {
+  try {
+    const nome = decodeURIComponent(req.params.filePath || "");
+    if (!nome) {
+      return res.status(400).json({ erro: "arquivo e obrigatorio" });
+    }
+
+    const fullPath = path.normalize(nome);
+    const dirBase = fs.existsSync(fullPath) ? path.dirname(fullPath) : ttsProcessorDir;
+    const finalPath = path.join(dirBase, path.basename(fullPath));
+    const resultado = excluirArquivoTts(finalPath, dirBase);
+    res.json(resultado);
+  } catch (error) {
+    res.status(500).json({ erro: error.message });
+  }
+});
+
+servidor.registrarPost("/api/tts/generate", async (req, res) => {
+  try {
+    const { texto, voz, language } = req.body || {};
+    const valor = String(texto || "").trim();
+
+    if (!valor) {
+      return res.status(400).json({ erro: "texto e obrigatorio" });
+    }
+
+    const arquivo = await ttsService.gerarAudio(valor, voz, language);
+    if (!arquivo) {
+      return res.status(500).json({ erro: "Falha ao gerar audio local do TTS." });
+    }
+
+    res.json({
+      audio: arquivo,
+      texto: valor,
+      voz: voz || null,
+      language: language || null,
+    });
+  } catch (error) {
+    console.error("Erro ao gerar TTS via endpoint:", error);
+    res.status(500).json({ erro: error.message || "Erro ao gerar TTS." });
+  }
 });
 
 servidor.registrarGet("/api/bot/status", (req, res) => {

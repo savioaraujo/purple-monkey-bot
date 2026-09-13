@@ -16,10 +16,10 @@
       "moderation:read",
       "channel:moderate"
     ],
-    "userAccessToken": "w94561jcdbv5yl7kn1cztl5vzyk6si",
-    "refreshToken": "1q86ctkqy9c0gic0wz4anhfb501fa2ywtf1rfibrajj3tibv7w",
+    "userAccessToken": "j3e2vmllnyjjt48wpq81z3xe5a70s5",
+    "refreshToken": "ak0x1hporb305ar53sog0nffcs15s04mr0vaa1fnbqyztn7vnj",
     "tokenType": "bearer",
-    "tokenExpiresAt": "2026-09-12T01:13:20.804Z",
+    "tokenExpiresAt": "2026-09-13T08:10:21.320Z",
     "moderatorId": "491852579",
     "moderatorLogin": "balderking",
     "cacheTtlMs": 30000,
@@ -37,7 +37,16 @@
         {
           "tipo": "audio",
           "comando": "!nanezinha",
-          "audio": "nanezinha.mp3"
+          "audio": "nanezinha.mp3",
+          "restricoes": {
+            "usuarios": [
+              "nanezinhas2"
+            ]
+          },
+          "trigger": {
+            "tipo": "primeira-mensagem",
+            "usuario": "nanezinhas2"
+          }
         },
         {
           "tipo": "texto-simples",
@@ -47,11 +56,18 @@
         {
           "tipo": "tts",
           "comando": "!cuequinha-tts",
-          "resposta": "Eu tô de cuequinha branca. cê vai amar. peepoHappy {{channel}}",
+          "resposta": "Eu tô de cuequinha branca. cê vai amar. peepoHappy",
           "options": {
             "provider": "xai",
             "voice": "eve",
-            "language": "pt-br"
+            "language": "pt-br",
+            "model": null,
+            "instructions": null
+          },
+          "restricoes": {
+            "cargos": [
+              "vip"
+            ]
           }
         },
         {
@@ -101,11 +117,6 @@
           "resposta": "{{username}} sorteou {{random_viewer}}"
         },
         {
-          "tipo": "audio",
-          "comando": "!teste-automation",
-          "audio": "/alert/sounds/gemidos.mp3"
-        },
-        {
           "tipo": "texto-simples",
           "comando": "!corno",
           "resposta": "{{username}} é {{random_20_100}}% corno ! Muuuuu"
@@ -126,6 +137,16 @@
             "model": null,
             "instructions": null
           }
+        },
+        {
+          "tipo": "texto-simples",
+          "comando": "!discord",
+          "resposta": "Cola ai ! https://discord.gg/cfHJxSaG8"
+        },
+        {
+          "tipo": "texto-simples",
+          "comando": "!tinter",
+          "resposta": "{{username}} deu match com {{random_viewer}}. Parabéns para o novo casal ! Kappa"
         }
       ],
       "listas": [
@@ -195,13 +216,23 @@
       ],
       "recompensas": [
         {
-          "titulo": "GG",
-          "custo": 200,
+          "titulo": "Nhaim",
+          "custo": 50,
           "rewardId": "e3dcbe91-a2a7-442b-92c5-92eef6abfb03",
           "duracao": 5,
+          "midia": "/alert/sounds/travesti-brasil.gif",
+          "audio": "/alert/sounds/natashacaldeirao.mp3",
+          "descricao": "Nhaim bicha",
+          "ativo": true
+        },
+        {
+          "titulo": "Cuequinha",
+          "custo": 500,
+          "rewardId": "3cf0dd0d-541d-44bb-984c-87ba42838402",
+          "duracao": 8,
           "midia": "",
-          "audio": "",
-          "descricao": "GG",
+          "audio": "/alert/sounds/cueca-branca.mp3",
+          "descricao": "",
           "ativo": true
         }
       ]

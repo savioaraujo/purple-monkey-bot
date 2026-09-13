@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Processador TTS</title>
+    <style>
+      body {
+        background: #111827;
+        color: #f3f4f6;
+        font-family: Arial, Helvetica, sans-serif;
+        margin: 0;
+        padding: 24px;
+      }
+      .wrap {
+        max-width: 1100px;
+        margin: 0 auto;
+      }
+      .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 24px;
+      }
+      .status {
+        background: #1f2937;
+        border: 1px solid #374151;
+        border-radius: 10px;
+        padding: 12px 16px;
+      }
+      button {
+        background: #2563eb;
+        border: none;
+        border-radius: 8px;
+        color: white;
+        cursor: pointer;
+        font-weight: 700;
+        padding: 10px 14px;
+      }
+      button.secondary {
+        background: #374151;
+      }
+      .fila {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+      .item {
+        background: #1f2937;
+        border: 1px solid #374151;
+        border-radius: 12px;
+        display: grid;
+        grid-template-columns: 1.7fr 1fr auto auto;
+        gap: 12px;
+        margin-bottom: 12px;
+        padding: 14px 16px;
+      }
+      .item small {
+        color: #9ca3af;
+        display: block;
+      }
+      .actions {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      audio {
+        width: 180px;
+      }
+      .empty {
+        color: #cbd5e1;
+      }
+    </style>
+    <script src="https://js.puter.com/v2/"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      const socket = io();
+      let processando = false;
+      const itens = [];
+
+      function renderFila() {
+        const list = document.getElementById("lista");
+        if (!list) return;
+
+        if (!itens.length) {
+          list.innerHTML = '<li class="empty">Nenhum áudio gerado hoje.</li>';
+          return;
+        }
+
+        list.innerHTML = itens.map((item, index) => `
+          <li class="item">
+            <div>
+              <strong>${item.texto || "Áudio sem texto"}</strong>
+              <small>${item.usuario || "Sistema"} • ${item.data || new Date().toLocaleString()}</small>
+            </div>
+            <div>
+              <small>Arquivo</small>
+              <div>${item.nomeArquivo || "audio"}</div>
+            </div>
+            <div class="actions">
+              <audio controls src="${item.audio || ""}"></audio>
+            </div>
+            <div class="actions">
+              <button type="button" data-action="play" data-index="${index}">Reproduzir</button>
+              <button type="button" data-action="reemit" data-index="${index}">Reemitir</button>
+              <button type="button" class="secondary" data-action="delete" data-index="${index}">Excluir</button>
+            </div>
+          </li>
+        `).join("");
+
+        document.querySelectorAll("button[data-action='play']").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const idx = Number(btn.dataset.index);
+            const item = itens[idx];
+            if (!item || !item.audio) return;
+            const audio = new Audio(item.audio);
+            audio.play();
+          });
+        });
+
+        document.querySelectorAll("button[data-action='reemit']").forEach((btn) => {
+          btn.addEventListener("click", async () => {
+            const idx = Number(btn.dataset.index);
+            const item = itens[idx];
+            if (!item || !item.audio) return;
+
+            socket.emit("tts:request", {
+              comando: `reemit:${item.nomeArquivo}`,
+              texto: item.texto || "Áudio reemitido",
+              usuario: item.usuario || "Sistema",
+              channel: "#local",
+              options: { voice: null, language: "pt-BR" },
+            });
+
+            document.getElementById("statusText").textContent = "Reemitindo áudio...";
+          });
+        });
+
+        document.querySelectorAll("button[data-action='delete']").forEach((btn) => {
+          btn.addEventListener("click", async () => {
+            const idx = Number(btn.dataset.index);
+            const item = itens[idx];
+            if (item && item.filePath) {
+              await fetch(`/api/tts/clear/${encodeURIComponent(item.filePath)}`, { method: "DELETE" });
+            }
+            itens.splice(idx, 1);
+            renderFila();
+          });
+        });
+      }
+
+      function carregarFila() {
+        fetch("/api/tts/fila")
+          .then((res) => res.json())
+          .then((dados) => {
+            itens.splice(0, itens.length, ...(dados.itens || []));
+            renderFila();
+          })
+          .catch((error) => console.error("Erro ao carregar fila:", error));
+      }
+
+      function paraDataUrl(blob) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(String(reader.result || ""));
+          reader.onerror = () => reject(new Error("Falha ao converter áudio para data URL."));
+          reader.readAsDataURL(blob);
+        });
+      }
+
+      async function resolverAudioData(audioUrl) {
+        if (!audioUrl) {
+          return "";
+        }
+
+        if (audioUrl.startsWith("data:")) {
+          return audioUrl;
+        }
+
+        try {
+          const resposta = await fetch(audioUrl);
+          const blob = await resposta.blob();
+          return await paraDataUrl(blob);
+        } catch (error) {
+          console.warn("[tts-processor] não foi possível converter o áudio para data URL:", error);
+          return "";
+        }
+      }
+
+      async function salvarAudioGeradoNoServidor(audioUrl, texto, payload, nomeArquivo) {
+        const usuario = payload && payload.usuario ? payload.usuario : "Sistema";
+
+        if (!audioUrl) {
+          return { audio: "", filePath: "" };
+        }
+
+        const audioData = await resolverAudioData(audioUrl);
+        const resposta = await fetch("/api/tts/save", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            nomeArquivo,
+            texto,
+            usuario,
+            audio: audioUrl,
+            audioData,
+          }),
+        });
+
+        const dados = await resposta.json();
+        if (!resposta.ok || !dados || !dados.ok) {
+          throw new Error((dados && dados.erro) || "Falha ao salvar áudio gerado.");
+        }
+
+        return { audio: dados.audio || audioUrl, filePath: dados.filePath || "" };
+      }
+
+      function normalizarOpcaoTts(voz, language, provider = "puter") {
+        const vozNormalizada = String(voz || "Vitoria").trim();
+        const languageNormalizada = String(language || "pt-BR").trim();
+        const providerNormalizado = String(provider || "puter").trim().toLowerCase();
+
+        const vozMap = {
+          eve: "Vitoria",
+          EVE: "Vitoria",
+          "pt-br": "pt-BR",
+          "PT-BR": "pt-BR",
+        };
+
+        const vozValida = vozMap[vozNormalizada] || vozNormalizada || "Vitoria";
+        const languageValida = vozMap[languageNormalizada] || languageNormalizada || "pt-BR";
+
+        if (providerNormalizado === "local") {
+          return {
+            voz: vozValida,
+            language: languageValida,
+            provider: "local",
+          };
+        }
+
+        return {
+          voz: vozValida,
+          language: languageValida,
+          provider: "puter",
+        };
+      }
+
+      async function gerarAudioComFallback(texto, voz, language, provider = "puter") {
+        const opcoes = normalizarOpcaoTts(voz, language, provider);
+
+        if (provider === "local") {
+          const resposta = await fetch("/api/tts/generate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ texto, voz: opcoes.voz, language: opcoes.language }),
+          });
+          const dados = await resposta.json();
+          if (!resposta.ok || !dados || !dados.audio) {
+            throw new Error((dados && dados.erro) || "Falha ao gerar áudio local.");
+          }
+
+          return {
+            audio: dados.audio,
+            fonte: "local",
+          };
+        }
+
+        if (window.puter && window.puter.ai && typeof window.puter.ai.txt2speech === "function") {
+          const audioObj = await window.puter.ai.txt2speech(texto, {
+            voice: opcoes.voz,
+            language: opcoes.language,
+          });
+
+          return {
+            audio: typeof audioObj === "string" ? audioObj : (audioObj && audioObj.src ? audioObj.src : ""),
+            fonte: "puter",
+          };
+        }
+
+        console.warn("[tts-processor] Puter indisponível; usando fallback local.");
+        const resposta = await fetch("/api/tts/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ texto, voz: opcoes.voz, language: opcoes.language }),
+        });
+        const dados = await resposta.json();
+        if (!resposta.ok || !dados || !dados.audio) {
+          throw new Error((dados && dados.erro) || "Falha ao gerar áudio local.");
+        }
+
+        return {
+          audio: dados.audio,
+          fonte: "local",
+        };
+      }
+
+      function inicializarEventos() {
+        const clearAll = document.getElementById("clearAll");
+        if (clearAll) {
+          clearAll.addEventListener("click", async () => {
+            await fetch("/api/tts/clear", { method: "DELETE" });
+            itens.splice(0, itens.length);
+            renderFila();
+          });
+        }
+      }
+
+      socket.on("connect", () => {
+        console.log("[tts-processor] conectado ao socket do servidor");
+        socket.emit("tts:register-processor");
+        document.getElementById("statusText").textContent = "Processador conectado e pronto";
+        carregarFila();
+      });
+
+      socket.on("tts:request", async (payload) => {
+        if (!payload || !payload.texto) {
+          return;
+        }
+
+        if (processando) {
+          return;
+        }
+
+        processando = true;
+        document.getElementById("statusText").textContent = "Gerando áudio...";
+
+        try {
+          const texto = String(payload.texto || "").trim();
+          const provider = payload.options && payload.options.provider ? payload.options.provider : "puter";
+          const voz = payload.options && payload.options.voice ? payload.options.voice : "Vitoria";
+          const language = payload.options && payload.options.language ? payload.options.language : "pt-BR";
+          const opcoes = normalizarOpcaoTts(voz, language, provider);
+
+          const audioResultado = await gerarAudioComFallback(texto, opcoes.voz, opcoes.language, opcoes.provider);
+          const audioUrl = audioResultado.audio || "";
+          const nomeArquivo = `tts-${Date.now()}.mp3`;
+
+          const retorno = {
+            tipo: "tts",
+            comando: payload.comando,
+            usuario: payload.usuario || "",
+            channel: payload.channel || "",
+            provider: opcoes.provider,
+            language: opcoes.language,
+            voice: opcoes.voz,
+            audio: audioUrl,
+            texto,
+            nomeArquivo,
+          };
+
+          const dadosSalvar = await salvarAudioGeradoNoServidor(audioUrl, texto, payload, nomeArquivo);
+          const audioPublico = dadosSalvar.audio || audioUrl;
+
+          itens.unshift({
+            texto,
+            usuario: payload.usuario || "Sistema",
+            data: new Date().toLocaleString(),
+            nomeArquivo,
+            audio: audioPublico,
+            filePath: dadosSalvar.filePath || "",
+          });
+          renderFila();
+          socket.emit("tts:ready", { ...retorno, audio: audioPublico, filePath: dadosSalvar.filePath || "" });
+        } catch (error) {
+          console.error("[tts-processor] erro ao gerar TTS:", error);
+          socket.emit("tts:ready", {
+            tipo: "alert-error",
+            comando: payload.comando,
+            usuario: payload.usuario || "",
+            channel: payload.channel || "",
+            mensagem: String((error && error.message) || error || "Erro ao gerar TTS"),
+          });
+        } finally {
+          processando = false;
+          document.getElementById("statusText").textContent = "Pronto";
+        }
+      });
+
+      inicializarEventos();
+      carregarFila();
+    </script>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="topbar">
+        <h1>Processador TTS</h1>
+        <div class="status" id="statusText">Conectando...</div>
+        <button id="clearAll" class="secondary" type="button">Limpar fila do dia</button>
+      </div>
+      <ul id="lista" class="fila"></ul>
+    </div>
+  </body>
+</html>

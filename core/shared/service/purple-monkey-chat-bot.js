@@ -28,6 +28,7 @@ class PurpleMonkeyChatBot {
     this.status = "inicializando";
     this.ultimoErro = "";
     this.conectado = false;
+    this.primeirasMensagensPorDia = new Map();
   }
 
   setStatus(status, erro) {
@@ -88,18 +89,40 @@ class PurpleMonkeyChatBot {
     this.client.on("message", async (channel, tags, message, self) => {
       if (self) return;
 
+      const username = String(tags && (tags.username || tags.user) || "").trim();
+      const canalNome = String(channel || "").replace(/^#/, "").toLowerCase();
+      const dataHoje = new Date().toISOString().slice(0, 10);
+      const chaveUsuarioDia = `${canalNome}:${username.toLowerCase()}:${dataHoje}`;
+      const primeiraMensagemDoDia = !this.primeirasMensagensPorDia.has(chaveUsuarioDia);
+
+      if (primeiraMensagemDoDia) {
+        console.log(`[trigger] Usuário ${username} enviou a primeira mensagem do dia no canal #${canalNome} (${dataHoje}).`);
+      } else {
+        console.log(`[trigger] Usuário ${username} já enviou mensagem hoje no canal #${canalNome} (${dataHoje}).`);
+      }
+
+      this.primeirasMensagensPorDia.set(chaveUsuarioDia, true);
+
       this.canais.forEach((canal) => {
         if (canal.nome === channel) {
           canal.comandos.forEach(async (comando) => {
-            console.log("testando comando : " + comando.comando);
+            const nomeComando = comando.comando || comando.matcher || "comando";
+            console.log("testando comando : " + nomeComando);
 
-            if (comando.match(message)) {
-              console.log("Executando comando : " + comando.comando);
-              try {
-                await this.executarComando(comando, channel, tags, message, servidor);
-              } catch (error) {
-                console.error("Erro ao executar comando:", error);
-              }
+            const deveExecutar = this.deveExecutarComando(comando, message, tags, {
+              primeiraMensagemDoDia,
+            });
+
+            if (!deveExecutar) {
+              console.log("Comando não elegível para execução: " + nomeComando);
+              return;
+            }
+
+            console.log("Executando comando : " + nomeComando);
+            try {
+              await this.executarComando(comando, channel, tags, message, servidor);
+            } catch (error) {
+              console.error("Erro ao executar comando:", error);
             }
           });
         }
@@ -209,20 +232,26 @@ class PurpleMonkeyChatBot {
         comando.resposta.mensagem,
         await this.criarMacrosContexto(channel, tags, message, comando.resposta.mensagem, canalContexto)
       );
-      // Envia para a UI/layer via socket para que o app TTS gere a fala com voz de IA
-      if (servidor && typeof servidor.notificarSockets === "function") {
-        servidor.notificarSockets("alert", {
-          tipo: "tts",
-          comando: comando.comando,
-          texto: mensagemResposta,
-          options: comando.options || {},
-          usuario: tags.username || "",
-          channel,
-        });
-      } else {
-        // Fallback: ainda tenta gerar localmente caso não haja servidor
-        const opts = comando.options || {};
-        this.ttsService.gerarAudio(mensagemResposta, opts.voice, opts.language);
+      const opts = comando.options || {};
+      const payloadTts = {
+        tipo: "tts",
+        comando: comando.comando,
+        texto: mensagemResposta,
+        options: opts,
+        usuario: tags.username || "",
+        channel,
+      };
+
+      if (servidor && typeof servidor.notificarProcessadorTts === "function") {
+        console.log("[tts-bot] comando TTS recebido. comando=", comando.comando, "usuario=", tags.username || "");
+        const processado = servidor.notificarProcessadorTts(payloadTts);
+        if (!processado && servidor && typeof servidor.notificarSockets === "function") {
+          console.log("[tts-bot] processador indisponível; enviando ao overlay diretamente.");
+          servidor.notificarSockets("alert", payloadTts);
+        }
+      } else if (servidor && typeof servidor.notificarSockets === "function") {
+        console.log("[tts-bot] servidor sem processador; enviando ao overlay diretamente.");
+        servidor.notificarSockets("alert", payloadTts);
       }
       // Se o comando tiver uma resposta de chat, envie para o canal
       if (comando.resposta && comando.resposta.mensagem) {
@@ -238,18 +267,26 @@ class PurpleMonkeyChatBot {
         mensagemResposta,
         await this.criarMacrosContexto(channel, tags, message, mensagemResposta, canalContexto)
       );
-      if (servidor && typeof servidor.notificarSockets === "function") {
-        servidor.notificarSockets("alert", {
-          tipo: "tts",
-          comando: comando.comando,
-          texto: mensagemFormatada,
-          options: comando.options || {},
-          usuario: tags.username || "",
-          channel,
-        });
-      } else {
-        const opts = comando.options || {};
-        this.ttsService.gerarAudio(mensagemFormatada, opts.voice, opts.language);
+      const opts = comando.options || {};
+      const payloadTts = {
+        tipo: "tts",
+        comando: comando.comando,
+        texto: mensagemFormatada,
+        options: opts,
+        usuario: tags.username || "",
+        channel,
+      };
+
+      if (servidor && typeof servidor.notificarProcessadorTts === "function") {
+        console.log("[tts-bot] comando TTS recebido. comando=", comando.comando, "usuario=", tags.username || "");
+        const processado = servidor.notificarProcessadorTts(payloadTts);
+        if (!processado && servidor && typeof servidor.notificarSockets === "function") {
+          console.log("[tts-bot] processador indisponível; enviando ao overlay diretamente.");
+          servidor.notificarSockets("alert", payloadTts);
+        }
+      } else if (servidor && typeof servidor.notificarSockets === "function") {
+        console.log("[tts-bot] servidor sem processador; enviando ao overlay diretamente.");
+        servidor.notificarSockets("alert", payloadTts);
       }
       // Opcional: enviar uma confirmação no chat
       if (comando.resposta && comando.resposta.mensagem) {
@@ -265,6 +302,51 @@ class PurpleMonkeyChatBot {
       });
       console.error("Enviado a mensagem para socket");
     }
+  }
+
+  isPrimeiraMensagemDoDia(channel, username) {
+    const canalNome = String(channel || "").replace(/^#/, "").toLowerCase();
+    const usuarioNome = String(username || "").trim().toLowerCase();
+    const dataHoje = new Date().toISOString().slice(0, 10);
+    const chaveUsuarioDia = `${canalNome}:${usuarioNome}:${dataHoje}`;
+    const primeiraMensagemDoDia = !this.primeirasMensagensPorDia.has(chaveUsuarioDia);
+
+    if (primeiraMensagemDoDia) {
+      this.primeirasMensagensPorDia.set(chaveUsuarioDia, true);
+    }
+
+    return primeiraMensagemDoDia;
+  }
+
+  deveExecutarComando(comando, message, tags, evento = {}) {
+    const hasTrigger = Boolean(comando && comando.trigger && comando.trigger.tipo);
+    const triggerAtivo = hasTrigger && typeof comando.temTriggerAtivo === "function"
+      ? comando.temTriggerAtivo(tags || {}, evento)
+      : false;
+
+    if (triggerAtivo) {
+      const autorizado = typeof comando.podeExecutar !== "function" || comando.podeExecutar(tags || {});
+      console.log(
+        `[trigger] comando=${comando && (comando.comando || comando.matcher || "comando")} ` +
+        `usuario=${tags && (tags.username || tags.user || "")} ` +
+        `triggerAtivo=${triggerAtivo} autorizado=${autorizado}`
+      );
+      return autorizado;
+    }
+
+    if (typeof comando.match !== "function") {
+      return false;
+    }
+
+    if (!comando.match(message)) {
+      return false;
+    }
+
+    if (typeof comando.podeExecutar === "function" && !comando.podeExecutar(tags || {})) {
+      return false;
+    }
+
+    return true;
   }
 
   async criarMacrosContexto(channel, tags, message, textoBase = "", canalContexto = null) {

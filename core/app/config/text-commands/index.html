@@ -44,6 +44,21 @@
         <label id="cmdOptionsLabel" style="display:none">Options (JSON) <span style="color:#888">(opcional)</span></label>
         <textarea id="cmdOptions" rows="6" style="display:none" placeholder='{"provider":"xai","voice":"eve","language":"pt-br"}'></textarea>
 
+        <label>Restrição por usuários <span style="color:#888">(opcional, separado por vírgula)</span></label>
+        <input id="restricoesUsuarios" placeholder="alice, bob" />
+
+        <label>Restrição por cargos <span style="color:#888">(opcional, separado por vírgula)</span></label>
+        <input id="restricoesCargos" placeholder="moderador, vip" />
+
+        <label>Trigger</label>
+        <select id="triggerTipo">
+          <option value="">Nenhum</option>
+          <option value="primeira-mensagem">Primeira mensagem no chat</option>
+        </select>
+
+        <label>Usuário do trigger <span style="color:#888">(opcional)</span></label>
+        <input id="triggerUsuario" placeholder="alice" />
+
         <label>Resposta <span style="color:red">*</span></label>
         <textarea id="cmdResponse" rows="6" required></textarea>
 
