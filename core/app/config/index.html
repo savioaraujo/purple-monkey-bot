@@ -146,6 +146,7 @@
         <h1>Configuração dos comandos</h1>
         <div class="actions">
           <button id="open-alert-window" title="Abrir o overlay de áudio, TTS, imagens, GIFs e vídeos">Abrir alertas</button>
+          <button id="open-overlay-config" title="Configurar resolução, posição e tamanho dos alertas">Overlay</button>
           <button id="open-rewards-window" title="Abrir o cadastro de alertas por pontos">Abrir recompensas</button>
           <button id="connect-twitch">Conectar Twitch</button>
           <button id="reload">Recarregar</button>
@@ -199,6 +200,7 @@
             <button data-type="texto-simples">Texto simples</button>
             <button data-type="texto-regex">Texto regex</button>
             <button data-type="tts">TTS</button>
+            <button data-type="card-sh">Card SH</button>
             <button data-type="recompensas">Recompensas por pontos</button>
           </div>
 
@@ -252,6 +254,7 @@
       const botErrorEl = document.querySelector("#bot-error");
       const connectTwitchBtn = document.getElementById("connect-twitch");
       const openAlertWindowBtn = document.getElementById("open-alert-window");
+      const openOverlayConfigBtn = document.getElementById("open-overlay-config");
       const openRewardsWindowBtn = document.getElementById("open-rewards-window");
       const renewTwitchTokenBtn = document.getElementById("renew-twitch-token");
       const botReconnectBtn = document.getElementById("bot-reconnect");
@@ -343,7 +346,7 @@
         const canal = (configData.canais || [])[currentChannelIndex];
         if (!canal) return;
 
-        const supportedTypes = ['texto-simples', 'texto-regex', 'audio', 'tts', 'recompensas'];
+        const supportedTypes = ['texto-simples', 'texto-regex', 'audio', 'tts', 'card-sh', 'overlay', 'recompensas'];
         if (!supportedTypes.includes(currentType)) {
           editorArea.innerHTML = '';
           return;
@@ -358,6 +361,8 @@
         if (type === 'texto-simples') return '/config/text-commands';
         if (type === 'texto-regex') return '/config/text-commands?type=texto-regex';
         if (type === 'tts') return '/config/text-commands?type=tts';
+        if (type === 'card-sh') return '/config/text-commands?type=card-sh';
+        if (type === 'overlay') return '/config/overlay';
         return '/config/audio-commands';
       }
 
@@ -686,11 +691,15 @@
       if (deleteListBtn) deleteListBtn.addEventListener('click', deleteSelectedList);
 
       if (openAlertWindowBtn) {
-        openAlertWindowBtn.addEventListener('click', () => abrirJanela('purple-monkey-alerts', '/alert/rewards', 960, 540));
+        openAlertWindowBtn.addEventListener('click', () => abrirJanela('purple-monkey-alerts', '/alert', 960, 540));
+      }
+
+      if (openOverlayConfigBtn) {
+        openOverlayConfigBtn.addEventListener('click', () => abrirJanela('purple-monkey-overlay', '/config/overlay', 1120, 760));
       }
 
       if (openRewardsWindowBtn) {
-        openRewardsWindowBtn.addEventListener('click', () => abrirJanela('purple-monkey-rewards', '/config/rewards', 920, 720));
+        openRewardsWindowBtn.addEventListener('click', () => abrirJanela('purple-monkey-alerts', '/alert', 960, 540));
       }
 
       if (connectTwitchBtn) {

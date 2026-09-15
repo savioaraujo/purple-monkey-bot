@@ -3,6 +3,7 @@ const tmi = require("tmi.js");
 const ComandoAudio = require("../../model/comandos/comando-audio.model.js");
 const ComandoTTS = require("../../model/comandos/comando-tts.model");
 const ComandoChatTTS = require("../../model/comandos/comando-chat-tts.model");
+const ComandoCardSH = require("../../model/comandos/comando-card-sh.model");
 const ComandoTextoSimples = require("../../model/comandos/comando-texto-simples.model.js");
 const ComandoTexto = require("../../model/comandos/comando-texto.model.js");
 const TTSService = require("./tts.service.js");
@@ -10,6 +11,7 @@ const TwitchChattersService = require("./twitch-chatters.service.js");
 const FormatterUtils = require("../utils/formatter.utils.js");
 const MacroUtils = require("../utils/macro.utils.js");
 const { resolverSenhaBot } = require("./bot-auth.utils.js");
+const TwitchApi = require("./twitch.api.js");
 
 class PurpleMonkeyChatBot {
   constructor(username, password, canais, twitchConfig) {
@@ -22,6 +24,7 @@ class PurpleMonkeyChatBot {
       botUsername: username,
       userAccessToken: this.password,
     });
+    this.twitchApi = new TwitchApi(twitchConfig && twitchConfig.clientId, twitchConfig && twitchConfig.clientSecret);
     this.formatterUtils = new FormatterUtils();
     this.listCanais = [];
     this.client = null;
@@ -204,7 +207,21 @@ class PurpleMonkeyChatBot {
   async executarComando(comando, channel, tags, message, servidor) {
     const canalContexto = this.obterCanalContexto(channel);
 
-    if (comando instanceof ComandoTexto) {
+    if (comando instanceof ComandoCardSH) {
+      const targetChannel = comando.getCanal(message);
+      try {
+        const card = await this.twitchApi.getChannelCardData(targetChannel);
+        servidor.notificarSockets("alert", {
+          tipo: "card-sh",
+          comando: comando.comando,
+          usuario: tags.username || "",
+          channel,
+          card,
+        });
+      } catch (error) {
+        console.error(`[card-sh] não foi possível carregar @${targetChannel}:`, error.message);
+      }
+    } else if (comando instanceof ComandoTexto) {
       const macrosContexto = await this.criarMacrosContexto(
         channel,
         tags,

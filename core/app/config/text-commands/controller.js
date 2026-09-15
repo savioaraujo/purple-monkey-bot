@@ -293,6 +293,7 @@
     const label = document.getElementById('cmdNameLabel');
     const title = document.getElementById('pageTitle');
     const isTtsLike = currentType === 'tts' || currentType === 'chat-tts';
+    const isCardSH = currentType === 'card-sh';
     if (label) {
       label.innerHTML = currentType === 'texto-regex'
         ? 'Regex do comando (ex: !teste|!teste2) <span style="color:red">*</span>'
@@ -303,6 +304,8 @@
         ? 'Comandos de Texto Regex (MVC)'
         : currentType === 'tts' || currentType === 'chat-tts'
           ? 'Comandos TTS (MVC)'
+          : isCardSH
+            ? 'Comandos Card SH (MVC)'
           : 'Comandos de Texto Simples (MVC)';
     }
     if (cmdOptionsLabel) {
@@ -410,9 +413,10 @@
     const name = (cmdName.value || '').trim();
     const response = (cmdResponse.value || '').trim();
     const isTtsLike = currentType === 'tts' || currentType === 'chat-tts';
+    const isCardSH = currentType === 'card-sh';
 
-    if (!name || (!response && !isTtsLike)) {
-      alert(currentType === 'texto-regex' ? 'Regex e resposta são obrigatórios' : isTtsLike ? 'Nome é obrigatório' : 'Nome e resposta são obrigatórios');
+    if (!name || (!response && !isTtsLike && !isCardSH)) {
+      alert(currentType === 'texto-regex' ? 'Regex e resposta são obrigatórios' : isTtsLike || isCardSH ? 'Nome é obrigatório' : 'Nome e resposta são obrigatórios');
       return;
     }
 
@@ -436,7 +440,7 @@
     const basePayload = {
       tipo: currentType,
       ...(currentType === 'texto-regex' ? { matcher: name } : { comando: name }),
-      resposta: response,
+      ...(response ? { resposta: response } : {}),
       ...(restricoes ? { restricoes } : {}),
       ...(trigger ? { trigger } : {})
     };

@@ -45,6 +45,7 @@ servidor.registrarConteudoPublico(ttsGeneratedDir, "/tts/generated");
 servidor.registrarConteudoPublico(ttsProcessorDir, "/tts-processor/files");
 servidor.registrarApp("/config/rewards", __dirname + "/core/app/config/rewards/index.html");
 servidor.registrarConteudoPublico(__dirname + "/core/app/config/rewards", "/config/rewards");
+servidor.registrarApp("/config/overlay", __dirname + "/core/app/config/overlay/index.html");
 
 servidor.registrarGet("/api/config", (req, res) => {
   res.json(canalDatabase.getConfig());

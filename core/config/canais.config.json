@@ -16,10 +16,10 @@
       "moderation:read",
       "channel:moderate"
     ],
-    "userAccessToken": "j3e2vmllnyjjt48wpq81z3xe5a70s5",
-    "refreshToken": "ak0x1hporb305ar53sog0nffcs15s04mr0vaa1fnbqyztn7vnj",
+    "userAccessToken": "k6xpcr0ovfe2ruui7brt0shf1b2l2f",
+    "refreshToken": "cfcwk9333j5ng3lw25xz6d7rz0nbsnk8w0s0daovl5mycu57qz",
     "tokenType": "bearer",
-    "tokenExpiresAt": "2026-09-13T08:10:21.320Z",
+    "tokenExpiresAt": "2026-09-15T09:16:09.886Z",
     "moderatorId": "491852579",
     "moderatorLogin": "balderking",
     "cacheTtlMs": 30000,
@@ -52,6 +52,10 @@
           "tipo": "texto-simples",
           "comando": "!info",
           "resposta": "Eu sou um bot, meu criador balderking me chamou aqui. Obrigado por me aceitar peepoLove."
+        },
+        {
+          "tipo": "card-sh",
+          "comando": "!sh"
         },
         {
           "tipo": "tts",
@@ -147,6 +151,15 @@
           "tipo": "texto-simples",
           "comando": "!tinter",
           "resposta": "{{username}} deu match com {{random_viewer}}. Parabéns para o novo casal ! Kappa"
+        },
+        {
+          "tipo": "audio",
+          "comando": "!cuequinha",
+          "audio": "/alert/sounds/cueca-branca.mp3",
+          "trigger": {
+            "tipo": "primeira-mensagem",
+            "usuario": "KingDraknes"
+          }
         }
       ],
       "listas": [
@@ -237,5 +250,27 @@
         }
       ]
     }
-  ]
+  ],
+  "overlay": {
+    "resolution": {
+      "width": 1920,
+      "height": 1080
+    },
+    "components": {
+      "midia": {
+        "x": 209,
+        "y": 491,
+        "width": 400,
+        "height": 400,
+        "scale": 1
+      },
+      "card-sh": {
+        "x": 1741,
+        "y": 500,
+        "width": 300,
+        "height": 400,
+        "scale": 1
+      }
+    }
+  }
 }

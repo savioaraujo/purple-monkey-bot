@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Configuração do Overlay</title>
+  <style>
+    :root { color-scheme: dark; font-family: Arial, sans-serif; background: #1b1024; color: #f4ecff; }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 18px; background: linear-gradient(135deg, #1b1024, #2f1743); }
+    .layout { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 18px; align-items: start; }
+    .panel { border: 1px solid #5f4488; border-radius: 10px; padding: 14px; background: rgba(45, 28, 68, .95); }
+    .preview-wrap { min-width: 0; }
+    .preview-title { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+    .preview { position: relative; width: 100%; max-height: 68vh; aspect-ratio: 16 / 9; overflow: hidden; border: 1px solid #8c69bd; border-radius: 8px; background-color: #101014; background-image: linear-gradient(45deg, #17151e 25%, transparent 25%), linear-gradient(-45deg, #17151e 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #17151e 75%), linear-gradient(-45deg, transparent 75%, #17151e 75%); background-size: 24px 24px; background-position: 0 0, 0 12px, 12px -12px, -12px 0; }
+    .preview-component { position: absolute; display: grid; place-items: center; transform: translate(-50%, -50%); border: 2px solid #36d7ff; background: rgba(54, 215, 255, .16); color: #fff; font-size: clamp(10px, 1.3vw, 16px); font-weight: 800; cursor: grab; user-select: none; touch-action: none; }
+    .preview-component.dragging { cursor: grabbing; }
+    .preview-component.selected { border-color: #ffd166; box-shadow: 0 0 0 3px rgba(255, 209, 102, .25); }
+    .preview-component.card { width: 19.8%; height: 50%; border-color: #ff4fa3; background: linear-gradient(155deg, rgba(145,70,255,.8), rgba(15,11,23,.9)); border-radius: 14px; }
+    .preview-component.media { width: 33.3%; height: 33.3%; border-radius: 5px; }
+    h1, h2, p { margin-top: 0; }
+    h1 { font-size: 20px; margin-bottom: 5px; }
+    h2 { font-size: 15px; margin: 0 0 12px; }
+    .muted { color: #c9c3b8; font-size: 12px; }
+    label { display: block; margin-top: 10px; color: #d9d0e6; font-size: 12px; font-weight: 700; }
+    input, select, button { width: 100%; margin-top: 4px; border: 1px solid #7a5ba8; border-radius: 6px; padding: 9px; background: #2c1c43; color: #f4ecff; }
+    button { cursor: pointer; font-weight: 700; }
+    button.primary { background: #7b4ed4; border-color: #9a73eb; }
+    .resolution, .coords { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .component-list { display: grid; gap: 7px; margin-bottom: 14px; }
+    .component-list button { text-align: left; }
+    .component-list button.active { border-color: #ffd166; background: #513576; }
+    .actions { display: flex; gap: 8px; margin-top: 16px; }
+    .actions button { flex: 1; }
+    #status { min-height: 20px; margin-top: 10px; color: #bde0aa; font-size: 12px; }
+    @media (max-width: 760px) { .layout { grid-template-columns: 1fr; } .preview { max-height: none; } }
+  </style>
+</head>
+<body>
+  <h1>Overlay</h1>
+  <p class="muted">Arraste os componentes no preview e ajuste tamanho, posição e resolução da área de renderização.</p>
+  <div class="layout">
+    <section class="panel preview-wrap">
+      <div class="preview-title"><strong>Área de renderização</strong><span id="resolutionLabel" class="muted"></span></div>
+      <div id="preview" class="preview">
+        <div id="preview-media" class="preview-component media" data-component="midia">GIFs / Vídeos</div>
+        <div id="preview-card" class="preview-component card" data-component="card-sh">Card SH</div>
+      </div>
+    </section>
+    <aside class="panel">
+      <h2>Resolução</h2>
+      <div class="resolution">
+        <label>Largura<input id="resolutionWidth" type="number" min="320" step="1"></label>
+        <label>Altura<input id="resolutionHeight" type="number" min="240" step="1"></label>
+      </div>
+      <h2 style="margin-top:18px">Componente</h2>
+      <div class="component-list">
+        <button data-select="midia">GIFs / Vídeos</button>
+        <button data-select="card-sh">Card SH</button>
+      </div>
+      <div id="componentFields">
+        <label>Posição X<input id="componentX" type="number" step="1"></label>
+        <label>Posição Y<input id="componentY" type="number" step="1"></label>
+        <div class="coords">
+          <label>Largura<input id="componentWidth" type="number" min="1" step="1"></label>
+          <label>Altura<input id="componentHeight" type="number" min="1" step="1"></label>
+        </div>
+        <label id="scaleLabel">Escala do componente<input id="componentScale" type="number" min="0.1" max="4" step="0.05"></label>
+      </div>
+      <div class="actions"><button id="resetButton">Restaurar</button><button id="saveButton" class="primary">Salvar</button></div>
+      <div id="status"></div>
+    </aside>
+  </div>
+  <script>
+    (() => {
+      const defaults = {
+        resolution: { width: 1920, height: 1080 },
+        components: {
+          midia: { x: 960, y: 540, width: 640, height: 360, scale: 1 },
+          'card-sh': { x: 960, y: 540, width: 380, height: 540, scale: 1 }
+        }
+      };
+      const preview = document.querySelector('#preview');
+      const resolutionWidth = document.querySelector('#resolutionWidth');
+      const resolutionHeight = document.querySelector('#resolutionHeight');
+      const resolutionLabel = document.querySelector('#resolutionLabel');
+      const status = document.querySelector('#status');
+      const fields = {
+        x: document.querySelector('#componentX'), y: document.querySelector('#componentY'),
+        width: document.querySelector('#componentWidth'), height: document.querySelector('#componentHeight'),
+        scale: document.querySelector('#componentScale')
+      };
+      let config;
+      let selected = 'midia';
+
+      function clone(value) { return JSON.parse(JSON.stringify(value)); }
+      function normalize(raw) {
+        const overlay = raw && raw.overlay ? raw.overlay : {};
+        return {
+          resolution: {
+            width: Number(overlay.resolution && overlay.resolution.width) || defaults.resolution.width,
+            height: Number(overlay.resolution && overlay.resolution.height) || defaults.resolution.height
+          },
+          components: {
+            midia: Object.assign({}, defaults.components.midia, overlay.components && overlay.components.midia || {}),
+            'card-sh': Object.assign({}, defaults.components['card-sh'], overlay.components && overlay.components['card-sh'] || {})
+          }
+        };
+      }
+      function setStatus(message, error) { status.textContent = message; status.style.color = error ? '#ffb1a8' : '#bde0aa'; }
+      function current() { return config.components[selected]; }
+      function render() {
+        const component = current();
+        resolutionWidth.value = config.resolution.width;
+        resolutionHeight.value = config.resolution.height;
+        preview.style.aspectRatio = config.resolution.width + ' / ' + config.resolution.height;
+        resolutionLabel.textContent = config.resolution.width + ' x ' + config.resolution.height;
+        Object.keys(fields).forEach((key) => { fields[key].value = component[key]; });
+        document.querySelectorAll('[data-select]').forEach((button) => button.classList.toggle('active', button.dataset.select === selected));
+        ['midia', 'card-sh'].forEach((name) => {
+          const element = document.querySelector('[data-component="' + name + '"]');
+          const item = config.components[name];
+          element.style.left = (item.x / config.resolution.width * 100) + '%';
+          element.style.top = (item.y / config.resolution.height * 100) + '%';
+          element.style.width = (item.width / config.resolution.width * 100) + '%';
+          element.style.height = (item.height / config.resolution.height * 100) + '%';
+          element.style.transform = 'translate(-50%, -50%) scale(' + (item.scale || 1) + ')';
+          element.classList.toggle('selected', name === selected);
+        });
+      }
+      function updateField(key) { current()[key] = Number(fields[key].value) || defaults.components[selected][key]; render(); }
+      let dragState = null;
+      function stopDrag() {
+        if (!dragState) return;
+        const state = dragState;
+        dragState = null;
+        state.element.classList.remove('dragging');
+        state.element.removeEventListener('pointermove', state.move);
+        document.removeEventListener('pointerup', stopDrag);
+        document.removeEventListener('pointercancel', stopDrag);
+        if (state.element.hasPointerCapture && state.element.hasPointerCapture(state.pointerId)) {
+          state.element.releasePointerCapture(state.pointerId);
+        }
+      }
+      function dragStart(event) {
+        if (event.button !== undefined && event.button !== 0) return;
+        stopDrag();
+        const name = event.currentTarget.dataset.component;
+        selected = name;
+        const startX = event.clientX;
+        const startY = event.clientY;
+        const originalX = config.components[name].x;
+        const originalY = config.components[name].y;
+        const rect = preview.getBoundingClientRect();
+        const element = event.currentTarget;
+        const move = (moveEvent) => {
+          config.components[name].x = Math.round(originalX + (moveEvent.clientX - startX) / rect.width * config.resolution.width);
+          config.components[name].y = Math.round(originalY + (moveEvent.clientY - startY) / rect.height * config.resolution.height);
+          render();
+        };
+        dragState = { element, pointerId: event.pointerId, move };
+        element.classList.add('dragging');
+        if (element.setPointerCapture) element.setPointerCapture(event.pointerId);
+        element.addEventListener('pointermove', move);
+        document.addEventListener('pointerup', stopDrag);
+        document.addEventListener('pointercancel', stopDrag);
+        render();
+      }
+      async function load() {
+        const response = await fetch('/api/config');
+        const raw = await response.json();
+        config = normalize(raw);
+        render();
+      }
+      async function save() {
+        const response = await fetch('/api/config');
+        const raw = await response.json();
+        raw.overlay = clone(config);
+        const saved = await fetch('/api/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(raw) });
+        const result = await saved.json();
+        if (!saved.ok) throw new Error(result.erro || 'Erro ao salvar overlay.');
+        setStatus('Overlay salvo.');
+      }
+      document.querySelectorAll('[data-select]').forEach((button) => button.addEventListener('click', () => { selected = button.dataset.select; render(); }));
+      document.querySelectorAll('[data-component]').forEach((element) => element.addEventListener('pointerdown', dragStart));
+      [resolutionWidth, resolutionHeight].forEach((input) => input.addEventListener('input', () => { config.resolution[input === resolutionWidth ? 'width' : 'height'] = Math.max(1, Number(input.value) || 1); render(); }));
+      Object.keys(fields).forEach((key) => fields[key].addEventListener('input', () => updateField(key)));
+      document.querySelector('#resetButton').addEventListener('click', () => { config = clone(defaults); render(); setStatus('Valores restaurados.'); });
+      document.querySelector('#saveButton').addEventListener('click', () => save().catch((error) => setStatus(error.message, true)));
+      load().catch((error) => setStatus(error.message, true));
+    })();
+  </script>
+</body>
+</html>

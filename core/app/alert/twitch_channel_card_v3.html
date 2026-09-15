@@ -1,0 +1,1118 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Twitch Channel Card</title>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Oswald:wght@500;600&display=swap');
+
+    :root {
+      --card-width: 380px;
+      --card-height: 540px;
+
+      --purple: #9146ff;
+      --pink: #ff4fa3;
+      --cyan: #36d7ff;
+      --yellow: #ffd166;
+
+      --text: #ffffff;
+      --muted: #cfc7dd;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: transparent !important;
+      font-family: "Inter", sans-serif;
+    }
+
+    body {
+      display: grid;
+      place-items: center;
+    }
+
+    .scene {
+      background: transparent;
+      position: relative;
+      width: 950px;
+      height: 760px;
+      display: grid;
+      place-items: center;
+      perspective: 1400px;
+    }
+
+    #fireworks {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .glow {
+      position: absolute;
+      width: 530px;
+      height: 530px;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at 30% 30%, rgba(54,215,255,.20), transparent 32%),
+        radial-gradient(circle at 72% 30%, rgba(255,79,163,.23), transparent 34%),
+        radial-gradient(circle at 50% 75%, rgba(145,70,255,.30), transparent 45%);
+      filter: blur(24px);
+      z-index: 1;
+      opacity: 0;
+      transform: scale(.72);
+      animation: glowIn 1200ms ease 500ms forwards;
+    }
+
+    .card-shell {
+      position: relative;
+      z-index: 2;
+      width: var(--card-width);
+      height: var(--card-height);
+
+      opacity: 0;
+      transform: translateY(240px) scale(.92);
+      animation: riseIn 1100ms cubic-bezier(.16,.85,.28,1.15) 250ms forwards;
+    }
+
+    .scene.finished .card-shell,
+    .scene.finished .glow {
+      animation: fadeOut 1200ms ease forwards;
+    }
+
+    .card {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+      border-radius: 34px;
+      background:
+        radial-gradient(circle at 10% 10%, rgba(54,215,255,.18), transparent 28%),
+        radial-gradient(circle at 90% 10%, rgba(255,79,163,.22), transparent 32%),
+        radial-gradient(circle at 50% 100%, rgba(145,70,255,.30), transparent 45%),
+        linear-gradient(155deg, #201331 0%, #0f0b17 62%, #08070c 100%);
+      box-shadow:
+        0 30px 50px rgba(0,0,0,.45),
+        inset 0 0 40px rgba(255,255,255,.025);
+      transition:
+        transform 900ms cubic-bezier(.2,.8,.2,1),
+        box-shadow 900ms ease;
+    }
+
+    /* Borda forte e colorida */
+    .card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      padding: 4px;
+      border-radius: inherit;
+      background:
+        linear-gradient(
+          135deg,
+          var(--cyan),
+          var(--purple) 30%,
+          var(--pink) 62%,
+          var(--yellow)
+        );
+
+      -webkit-mask:
+        linear-gradient(#fff 0 0) content-box,
+        linear-gradient(#fff 0 0);
+
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+
+      pointer-events: none;
+      z-index: 3;
+    }
+
+    .shine-clip {
+      content: "";
+      position: absolute;
+      inset: 4px;
+      border-radius: 30px;
+      overflow: hidden;
+      pointer-events: none;
+      z-index: 4;
+    }
+
+    .shine-clip::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(
+          115deg,
+          transparent 15%,
+          rgba(255,255,255,.08) 38%,
+          transparent 52%
+        );
+      transform: translateX(-130%);
+      animation: shine 1400ms ease 1350ms forwards;
+    }
+
+    .pattern {
+      position: absolute;
+      inset: 4px;
+      border-radius: 30px;
+      opacity: .16;
+      overflow: hidden;
+      background-image:
+        linear-gradient(rgba(255,255,255,.055) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.055) 1px, transparent 1px);
+      background-size: 32px 32px;
+      mask-image: linear-gradient(to bottom, rgba(0,0,0,.8), transparent 95%);
+      pointer-events: none;
+    }
+
+    /*
+      ==================================================
+      FOTO
+      Inicial: grande e central.
+      Estado expandido: menor e parcialmente fora do card.
+      ==================================================
+    */
+
+    .avatar {
+      position: absolute;
+      z-index: 30;
+      left: 50%;
+      top: 92px;
+
+      width: 220px;
+      height: 220px;
+      padding: 8px;
+      border-radius: 50%;
+
+      transform: translateX(-50%);
+
+      background:
+        linear-gradient(
+          135deg,
+          var(--cyan),
+          var(--purple) 33%,
+          var(--pink) 67%,
+          var(--yellow)
+        );
+
+      box-shadow:
+        0 0 0 7px rgba(255,255,255,.055),
+        0 0 38px rgba(145,70,255,.50),
+        0 0 72px rgba(255,79,163,.18);
+
+      transition:
+        top 1000ms cubic-bezier(.22,.8,.2,1),
+        width 1000ms cubic-bezier(.22,.8,.2,1),
+        height 1000ms cubic-bezier(.22,.8,.2,1),
+        padding 1000ms cubic-bezier(.22,.8,.2,1),
+        box-shadow 1000ms ease;
+      isolation: isolate;
+    }
+
+    .avatar::after {
+      content: "";
+      position: absolute;
+      inset: -17px;
+      border-radius: 50%;
+      border: 2px solid rgba(255,255,255,.12);
+      border-top-color: var(--cyan);
+      border-right-color: var(--pink);
+      animation: ringSpin 6s linear infinite;
+    }
+
+    .avatar img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 6px solid #0d0915;
+    }
+
+    /*
+      ==================================================
+      NOME
+      ==================================================
+    */
+
+    .channel-name {
+      position: absolute;
+      left: 28px;
+      right: 28px;
+      top: 343px;
+      z-index: 12;
+
+      text-align: center;
+      font-family: "Oswald", sans-serif;
+      font-size: 46px;
+      font-weight: 600;
+      line-height: 1;
+      color: white;
+      text-shadow: 0 4px 18px rgba(0,0,0,.48);
+
+      transition:
+        top 950ms cubic-bezier(.22,.8,.2,1),
+        font-size 950ms cubic-bezier(.22,.8,.2,1);
+    }
+
+    .intro-label {
+      position: absolute;
+      top: 398px;
+      left: 0;
+      right: 0;
+      z-index: 12;
+
+      text-align: center;
+      color: #d6cede;
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: .15em;
+      text-transform: uppercase;
+
+      opacity: 1;
+      transform: translateY(0);
+
+      transition:
+        opacity 400ms ease,
+        transform 500ms ease;
+    }
+
+    /*
+      ==================================================
+      CONTEÚDO FINAL
+      ==================================================
+    */
+
+    .details {
+      position: absolute;
+      z-index: 11;
+      left: 30px;
+      right: 30px;
+      top: 174px;
+
+      opacity: 0;
+      transform: translateY(28px);
+      pointer-events: none;
+
+      transition:
+        opacity 650ms ease 420ms,
+        transform 800ms cubic-bezier(.2,.8,.2,1) 300ms;
+    }
+
+    .playing-label {
+      text-align: center;
+      font-size: 13px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .15em;
+      color: #aaa0ba;
+      margin-bottom: 7px;
+    }
+
+    .game-name {
+      text-align: center;
+      font-size: 19px;
+      font-weight: 800;
+      color: white;
+      padding: 10px 16px;
+      border-radius: 999px;
+      margin: 0 auto;
+      width: fit-content;
+      max-width: 100%;
+
+      background:
+        linear-gradient(
+          90deg,
+          rgba(145,70,255,.20),
+          rgba(255,79,163,.18)
+        );
+
+      border: 1px solid rgba(255,255,255,.13);
+    }
+
+    .divider {
+      width: 100%;
+      height: 1px;
+      margin: 15px 0 15px;
+
+      background:
+        linear-gradient(
+          90deg,
+          transparent,
+          rgba(54,215,255,.75),
+          rgba(145,70,255,.95),
+          rgba(255,79,163,.75),
+          transparent
+        );
+    }
+
+    .description-label {
+      color: var(--cyan);
+      text-transform: uppercase;
+      letter-spacing: .15em;
+      font-size: 13px;
+      font-weight: 800;
+      margin-bottom: 7px;
+    }
+
+    .description {
+      margin: 0;
+      max-height: 116px;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(54,215,255,.7) rgba(255,255,255,.06);
+      color: #eeeaf4;
+      font-size: 18px;
+      line-height: 1.4;
+      font-weight: 500;
+    }
+
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 16px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255,255,255,.07);
+
+      color: #aaa2b7;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .twitch-badge {
+      color: white;
+      padding: 8px 11px;
+      border-radius: 10px;
+      background:
+        linear-gradient(
+          135deg,
+          rgba(145,70,255,.42),
+          rgba(255,79,163,.24)
+        );
+      border: 1px solid rgba(255,255,255,.12);
+    }
+
+    /*
+      ==================================================
+      TRANSIÇÃO
+      Não existe mais verso/espelhamento.
+      É o mesmo card reorganizando o conteúdo.
+      ==================================================
+    */
+
+    .card.expanded {
+      transform: rotateY(-2deg) scale(1.015);
+      box-shadow:
+        0 34px 58px rgba(0,0,0,.48),
+        0 0 45px rgba(145,70,255,.10);
+    }
+
+    .card.expanded .avatar {
+      top: -66px;
+      width: 154px;
+      height: 154px;
+      padding: 6px;
+
+      box-shadow:
+        0 0 0 6px rgba(255,255,255,.055),
+        0 0 32px rgba(145,70,255,.43),
+        0 0 58px rgba(255,79,163,.14);
+    }
+
+    .card.expanded .channel-name {
+      top: 107px;
+      font-size: 36px;
+    }
+
+    .card.expanded .intro-label {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+
+    .card.expanded .details {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+
+    /*
+      ==================================================
+      ANIMAÇÕES
+      ==================================================
+    */
+
+    @keyframes riseIn {
+      0% {
+        opacity: 0;
+        transform: translateY(240px) scale(.92);
+      }
+
+      65% {
+        opacity: 1;
+        transform: translateY(-15px) scale(1.015);
+      }
+
+      100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    @keyframes glowIn {
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    @keyframes shine {
+      to {
+        transform: translateX(130%);
+      }
+    }
+
+    @keyframes ringSpin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    @keyframes fadeOut {
+      to {
+        opacity: 0;
+      }
+    }
+
+    @media (max-width: 650px) {
+      :root {
+        --card-width: 320px;
+        --card-height: 480px;
+      }
+
+      .scene {
+        width: 100vw;
+        height: 100vh;
+      }
+
+      .avatar {
+        width: 180px;
+        height: 180px;
+        top: 82px;
+      }
+
+      .channel-name {
+        top: 300px;
+        font-size: 38px;
+      }
+
+      .intro-label {
+        top: 346px;
+      }
+
+      .card.expanded .avatar {
+        width: 132px;
+        height: 132px;
+        top: -56px;
+      }
+
+      .card.expanded .channel-name {
+        top: 91px;
+        font-size: 31px;
+      }
+
+      .details {
+        top: 146px;
+        left: 24px;
+        right: 24px;
+      }
+
+      .description {
+        font-size: 16px;
+      }
+
+      .divider {
+        margin: 12px 0 12px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <main class="scene">
+
+    <canvas id="fireworks"></canvas>
+
+    <div class="glow"></div>
+
+    <div class="card-shell">
+
+      <section class="card" id="channelCard">
+
+        <div class="pattern"></div>
+        <div class="shine-clip"></div>
+
+        <!-- FOTO: é a mesma antes e depois da transição -->
+        <div class="avatar">
+          <img
+            id="channelAvatar"
+            src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=700&q=90"
+            alt="Foto do canal"
+          />
+        </div>
+
+        <!-- NOME: também é o mesmo elemento -->
+        <div class="channel-name" id="channelName">
+          Canal de Teste
+        </div>
+
+        <!-- Só aparece no estado inicial -->
+        <div class="intro-label">
+          Canal em destaque
+        </div>
+
+        <!-- Aparece depois que a foto sobe -->
+        <div class="details">
+
+          <div class="playing-label" id="activityLabel">
+            Estava jogando
+          </div>
+
+          <div class="game-name" id="activityName">
+            Resident Evil
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="description-label">
+            Descrição do canal
+          </div>
+
+          <p class="description" id="channelBio">
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+            Integer posuere erat a ante venenatis dapibus posuere velit
+            aliquet. Donec sed odio dui. Cras mattis consectetur purus
+            sit amet fermentum.
+          </p>
+
+          <div class="footer">
+            <span>Conheça o canal</span>
+            <span class="twitch-badge">Twitch</span>
+          </div>
+
+        </div>
+
+      </section>
+
+    </div>
+
+  </main>
+
+
+  <script>
+
+    /*
+      Tempo até o card reorganizar o conteúdo.
+      4000 = 4 segundos.
+    */
+
+    const TRANSITION_AFTER = 4000;
+    const FADE_AFTER_EXPANSION = 10000;
+
+    const card =
+      document.getElementById("channelCard");
+    const scene = document.querySelector(".scene");
+    const avatar = document.getElementById("channelAvatar");
+    const channelName = document.getElementById("channelName");
+    const activityLabel = document.getElementById("activityLabel");
+    const activityName = document.getElementById("activityName");
+    const channelBio = document.getElementById("channelBio");
+    let bioScrollFrame = null;
+
+    function aplicarDados(dados) {
+      if (!dados) return;
+      if (dados.profileImageUrl) avatar.src = dados.profileImageUrl;
+      channelName.textContent = dados.channelName || dados.login || "Canal Twitch";
+      activityLabel.textContent = dados.activityLabel || (dados.isLive ? "Está transmitindo" : "Estava transmitindo");
+      activityName.textContent = dados.activity || "Nenhuma atividade recente";
+      channelBio.textContent = dados.bio || "Este canal ainda não informou uma bio.";
+    }
+
+    window.addEventListener("message", (evento) => {
+      if (evento.data && evento.data.tipo === "card-sh") aplicarDados(evento.data.card);
+    });
+
+    if (window.CARD_SH_DATA) aplicarDados(window.CARD_SH_DATA);
+
+    function iniciarBioAutoScroll() {
+      const distancia = channelBio.scrollHeight - channelBio.clientHeight;
+      if (distancia <= 0) return;
+
+      const inicio = performance.now();
+      const duracao = 10000;
+      const rolar = (agora) => {
+        const progresso = Math.min((agora - inicio) / duracao, 1);
+        channelBio.scrollTop = distancia * progresso;
+        if (progresso < 1) bioScrollFrame = requestAnimationFrame(rolar);
+      };
+      bioScrollFrame = requestAnimationFrame(rolar);
+    }
+
+    setTimeout(() => {
+      card.classList.add("expanded");
+      iniciarBioAutoScroll();
+      setTimeout(() => {
+        scene.classList.add("finished");
+        setTimeout(() => window.parent.postMessage("card-sh:finished", "*"), 1300);
+      }, FADE_AFTER_EXPANSION);
+    }, TRANSITION_AFTER);
+
+
+    /*
+      ==================================================
+      FOGOS
+      ==================================================
+    */
+
+    const canvas =
+      document.getElementById("fireworks");
+
+    const ctx =
+      canvas.getContext("2d");
+
+    let width = 0;
+    let height = 0;
+
+    let particles = [];
+    let burstsCreated = 0;
+
+    const maxBursts = 8;
+
+
+    function resize() {
+
+      const ratio =
+        Math.min(
+          window.devicePixelRatio || 1,
+          2
+        );
+
+      width =
+        canvas.clientWidth;
+
+      height =
+        canvas.clientHeight;
+
+      canvas.width =
+        width * ratio;
+
+      canvas.height =
+        height * ratio;
+
+      ctx.setTransform(
+        ratio,
+        0,
+        0,
+        ratio,
+        0,
+        0
+      );
+
+    }
+
+
+    window.addEventListener(
+      "resize",
+      resize
+    );
+
+    resize();
+
+
+    const palettes = [
+
+      [
+        "#9146ff",
+        "#c7a6ff",
+        "#ffffff"
+      ],
+
+      [
+        "#ff4fa3",
+        "#ff9dcc",
+        "#ffffff"
+      ],
+
+      [
+        "#36d7ff",
+        "#9cf0ff",
+        "#ffffff"
+      ],
+
+      [
+        "#ffd166",
+        "#fff0ac",
+        "#ffffff"
+      ]
+
+    ];
+
+
+    class Particle {
+
+      constructor(
+        x,
+        y,
+        color,
+        angle,
+        speed
+      ) {
+
+        this.x = x;
+        this.y = y;
+
+        this.color = color;
+
+        this.vx =
+          Math.cos(angle) *
+          speed;
+
+        this.vy =
+          Math.sin(angle) *
+          speed;
+
+        this.gravity =
+          0.045 +
+          Math.random() * 0.02;
+
+        this.friction =
+          0.985;
+
+        this.life =
+          1;
+
+        this.decay =
+          0.012 +
+          Math.random() * 0.012;
+
+        this.size =
+          1.4 +
+          Math.random() * 2.5;
+
+        this.history =
+          [];
+
+      }
+
+
+      update() {
+
+        this.history.push({
+          x: this.x,
+          y: this.y
+        });
+
+        if (
+          this.history.length > 6
+        ) {
+          this.history.shift();
+        }
+
+        this.vx *=
+          this.friction;
+
+        this.vy *=
+          this.friction;
+
+        this.vy +=
+          this.gravity;
+
+        this.x +=
+          this.vx;
+
+        this.y +=
+          this.vy;
+
+        this.life -=
+          this.decay;
+
+      }
+
+
+      draw() {
+
+        ctx.beginPath();
+
+        if (
+          this.history.length
+        ) {
+
+          const first =
+            this.history[0];
+
+          ctx.moveTo(
+            first.x,
+            first.y
+          );
+
+        } else {
+
+          ctx.moveTo(
+            this.x,
+            this.y
+          );
+
+        }
+
+        ctx.lineTo(
+          this.x,
+          this.y
+        );
+
+        ctx.strokeStyle =
+          hexToRgba(
+            this.color,
+            Math.max(
+              this.life,
+              0
+            )
+          );
+
+        ctx.lineWidth =
+          this.size;
+
+        ctx.lineCap =
+          "round";
+
+        ctx.stroke();
+
+
+        ctx.beginPath();
+
+        ctx.arc(
+          this.x,
+          this.y,
+          this.size * 0.7,
+          0,
+          Math.PI * 2
+        );
+
+        ctx.fillStyle =
+          hexToRgba(
+            this.color,
+            Math.max(
+              this.life,
+              0
+            )
+          );
+
+        ctx.fill();
+
+      }
+
+    }
+
+
+    function hexToRgba(
+      hex,
+      alpha
+    ) {
+
+      const value =
+        hex.replace(
+          "#",
+          ""
+        );
+
+      const bigint =
+        parseInt(
+          value,
+          16
+        );
+
+      const r =
+        (bigint >> 16) & 255;
+
+      const g =
+        (bigint >> 8) & 255;
+
+      const b =
+        bigint & 255;
+
+      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+
+    }
+
+
+    function createBurst(
+      x,
+      y
+    ) {
+
+      const palette =
+        palettes[
+          Math.floor(
+            Math.random() *
+            palettes.length
+          )
+        ];
+
+      const amount =
+        45 +
+        Math.floor(
+          Math.random() * 28
+        );
+
+
+      for (
+        let i = 0;
+        i < amount;
+        i++
+      ) {
+
+        const angle =
+          (
+            Math.PI *
+            2 *
+            i
+          ) /
+          amount +
+          Math.random() *
+          0.15;
+
+        const speed =
+          2.4 +
+          Math.random() *
+          4.6;
+
+        const color =
+          palette[
+            Math.floor(
+              Math.random() *
+              palette.length
+            )
+          ];
+
+        particles.push(
+          new Particle(
+            x,
+            y,
+            color,
+            angle,
+            speed
+          )
+        );
+
+      }
+
+    }
+
+
+    function randomBurst() {
+
+      if (
+        burstsCreated >=
+        maxBursts
+      ) {
+        return;
+      }
+
+      const side =
+        Math.random() > 0.5
+          ? 1
+          : -1;
+
+      const centerX =
+        width / 2;
+
+      const x =
+        centerX +
+        side *
+        (
+          210 +
+          Math.random() *
+          Math.max(
+            70,
+            width * 0.17
+          )
+        );
+
+      const y =
+        height *
+        (
+          0.18 +
+          Math.random() *
+          0.48
+        );
+
+      createBurst(
+        x,
+        y
+      );
+
+      burstsCreated++;
+
+    }
+
+
+    function animateFireworks() {
+
+      ctx.clearRect(
+        0,
+        0,
+        width,
+        height
+      );
+
+      particles =
+        particles.filter(
+          particle =>
+            particle.life > 0
+        );
+
+      particles.forEach(
+        particle => {
+
+          particle.update();
+          particle.draw();
+
+        }
+      );
+
+      requestAnimationFrame(
+        animateFireworks
+      );
+
+    }
+
+
+    animateFireworks();
+
+
+    setTimeout(randomBurst, 450);
+    setTimeout(randomBurst, 750);
+    setTimeout(randomBurst, 1050);
+    setTimeout(randomBurst, 1350);
+    setTimeout(randomBurst, 1750);
+    setTimeout(randomBurst, 2200);
+    setTimeout(randomBurst, 2750);
+    setTimeout(randomBurst, 3300);
+
+  </script>
+
+</body>
+</html>

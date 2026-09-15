@@ -1,14 +1,25 @@
+html,
+body,
 :root {
   color-scheme: dark;
   font-family: Arial, Helvetica, sans-serif;
-  background: transparent;
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
   color: #f8f4ed;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
-  background: transparent;
+}
+
+.alert-app,
+.media-stage,
+#card-sh-host {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
 }
 
 .alert-app {
@@ -25,3 +36,5 @@ body {
 .media-stage.visible { display:flex; }
 .media-stage img, .media-stage video { display:none; max-height:100vh; max-width:100vw; object-fit:contain; }
 .media-stage img.visible, .media-stage video.visible { display:block; }
+#card-sh-host { display:none; height:min(760px, 100vh); position:absolute; width:min(950px, 100vw); }
+#card-sh-host.visible { display:block; }
