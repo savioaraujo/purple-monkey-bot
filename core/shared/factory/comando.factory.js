@@ -4,6 +4,7 @@ const ComandoCardSH = require("../../model/comandos/comando-card-sh.model");
 const ComandoTextoSimples = require("../../model/comandos/comando-texto-simples.model");
 const ComandoTexto = require("../../model/comandos/comando-texto.model");
 const ComandoTTS = require("../../model/comandos/comando-tts.model");
+const ComandoRoleta = require("../../model/comandos/comando-roleta.model");
 const RespostaTexto = require("../../model/comandos/resposta-texto.model.js");
 
 class ComandoFactory {
@@ -79,6 +80,9 @@ class ComandoFactory {
       case "card-sh":
         this.validarCampos(definicao, ["comando"]);
         return new ComandoCardSH(definicao.comando, definicao);
+      case "roleta":
+        this.validarCampos(definicao, ["comando", "premios"]);
+        return new ComandoRoleta(definicao.comando, definicao.premios, definicao, definicao.roletaConfig || null);
       default:
         throw new Error("Tipo de comando nao suportado: " + definicao.tipo);
     }

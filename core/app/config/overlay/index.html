@@ -45,6 +45,7 @@
       <div id="preview" class="preview">
         <div id="preview-media" class="preview-component media" data-component="midia">GIFs / Vídeos</div>
         <div id="preview-card" class="preview-component card" data-component="card-sh">Card SH</div>
+        <div id="preview-roleta" class="preview-component card" data-component="roleta">Roleta</div>
       </div>
     </section>
     <aside class="panel">
@@ -57,6 +58,7 @@
       <div class="component-list">
         <button data-select="midia">GIFs / Vídeos</button>
         <button data-select="card-sh">Card SH</button>
+        <button data-select="roleta">Roleta</button>
       </div>
       <div id="componentFields">
         <label>Posição X<input id="componentX" type="number" step="1"></label>
@@ -77,7 +79,8 @@
         resolution: { width: 1920, height: 1080 },
         components: {
           midia: { x: 960, y: 540, width: 640, height: 360, scale: 1 },
-          'card-sh': { x: 960, y: 540, width: 380, height: 540, scale: 1 }
+          'card-sh': { x: 960, y: 540, width: 380, height: 540, scale: 1 },
+          roleta: { x: 960, y: 540, width: 700, height: 700, scale: 1 }
         }
       };
       const preview = document.querySelector('#preview');
@@ -104,6 +107,7 @@
           components: {
             midia: Object.assign({}, defaults.components.midia, overlay.components && overlay.components.midia || {}),
             'card-sh': Object.assign({}, defaults.components['card-sh'], overlay.components && overlay.components['card-sh'] || {})
+            ,roleta: Object.assign({}, defaults.components.roleta, overlay.components && overlay.components.roleta || {})
           }
         };
       }
@@ -117,7 +121,7 @@
         resolutionLabel.textContent = config.resolution.width + ' x ' + config.resolution.height;
         Object.keys(fields).forEach((key) => { fields[key].value = component[key]; });
         document.querySelectorAll('[data-select]').forEach((button) => button.classList.toggle('active', button.dataset.select === selected));
-        ['midia', 'card-sh'].forEach((name) => {
+        ['midia', 'card-sh', 'roleta'].forEach((name) => {
           const element = document.querySelector('[data-component="' + name + '"]');
           const item = config.components[name];
           element.style.left = (item.x / config.resolution.width * 100) + '%';

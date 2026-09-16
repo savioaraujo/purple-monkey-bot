@@ -4,6 +4,7 @@ const ComandoAudio = require("../../model/comandos/comando-audio.model.js");
 const ComandoTTS = require("../../model/comandos/comando-tts.model");
 const ComandoChatTTS = require("../../model/comandos/comando-chat-tts.model");
 const ComandoCardSH = require("../../model/comandos/comando-card-sh.model");
+const ComandoRoleta = require("../../model/comandos/comando-roleta.model");
 const ComandoTextoSimples = require("../../model/comandos/comando-texto-simples.model.js");
 const ComandoTexto = require("../../model/comandos/comando-texto.model.js");
 const TTSService = require("./tts.service.js");
@@ -108,13 +109,18 @@ class PurpleMonkeyChatBot {
 
       this.canais.forEach((canal) => {
         if (canal.nome === channel) {
-          canal.comandos.forEach(async (comando) => {
+          const execucoes = [
+            ...canal.comandos.map((comando) => ({ comando })),
+            ...(canal.triggers || []).map((trigger) => ({ comando: trigger.comando, trigger })),
+          ];
+          execucoes.forEach(async ({ comando, trigger }) => {
             const nomeComando = comando.comando || comando.matcher || "comando";
             console.log("testando comando : " + nomeComando);
 
             const deveExecutar = this.deveExecutarComando(comando, message, tags, {
               primeiraMensagemDoDia,
-            });
+              mensagem: message,
+            }, trigger);
 
             if (!deveExecutar) {
               console.log("Comando não elegível para execução: " + nomeComando);
@@ -207,7 +213,12 @@ class PurpleMonkeyChatBot {
   async executarComando(comando, channel, tags, message, servidor) {
     const canalContexto = this.obterCanalContexto(channel);
 
-    if (comando instanceof ComandoCardSH) {
+    if (comando instanceof ComandoRoleta) {
+      const roleta = comando.roleta || {};
+      servidor.notificarSockets("alert", { tipo: "roleta", comando: comando.comando, premios: comando.premios, usuario: tags.username || "", channel,
+        audioInicio: roleta.audioInicio || "", audioResultado: roleta.audioResultado || "", ttsResultado: roleta.ttsResultado || false,
+        ttsOptions: roleta.ttsOptions || {} });
+    } else if (comando instanceof ComandoCardSH) {
       const targetChannel = comando.getCanal(message);
       try {
         const card = await this.twitchApi.getChannelCardData(targetChannel);
@@ -335,10 +346,13 @@ class PurpleMonkeyChatBot {
     return primeiraMensagemDoDia;
   }
 
-  deveExecutarComando(comando, message, tags, evento = {}) {
-    const hasTrigger = Boolean(comando && comando.trigger && comando.trigger.tipo);
-    const triggerAtivo = hasTrigger && typeof comando.temTriggerAtivo === "function"
-      ? comando.temTriggerAtivo(tags || {}, evento)
+  deveExecutarComando(comando, message, tags, evento = {}, trigger = null) {
+    const triggerConfig = trigger || comando && comando.trigger;
+    const hasTrigger = Boolean(triggerConfig && triggerConfig.tipo);
+    const comandoComTrigger = triggerConfig && comando && comando.constructor
+      ? Object.assign(Object.create(Object.getPrototypeOf(comando)), comando, { trigger: triggerConfig }) : comando;
+    const triggerAtivo = hasTrigger && comandoComTrigger && typeof comandoComTrigger.temTriggerAtivo === "function"
+      ? comandoComTrigger.temTriggerAtivo(tags || {}, evento)
       : false;
 
     if (triggerAtivo) {

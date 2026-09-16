@@ -5,11 +5,13 @@
   const alertImage = document.querySelector("#alert-image");
   const alertVideo = document.querySelector("#alert-video");
   const cardHost = document.querySelector("#card-sh-host");
+  const roletaHost = document.querySelector("#roleta-host");
   const overlayDefaults = {
     resolution: { width: 1920, height: 1080 },
     components: {
       midia: { x: 960, y: 540, width: 640, height: 360, scale: 1 },
       "card-sh": { x: 960, y: 540, width: 380, height: 540, scale: 1 },
+      roleta: { x: 960, y: 540, width: 700, height: 700, scale: 1 },
     },
   };
   let overlayConfig = overlayDefaults;
@@ -17,6 +19,7 @@
   let tocando = false;
   let audioAtual = null;
   let timeoutAtual = null;
+  const ttsRoletasPendentes = new Map();
 
   if (cardHost) {
     carregarLayoutOverlay();
@@ -44,6 +47,7 @@
       components: {
         midia: { ...overlayDefaults.components.midia, ...(valor.components && valor.components.midia ? valor.components.midia : {}) },
         "card-sh": { ...overlayDefaults.components["card-sh"], ...(valor.components && valor.components["card-sh"] ? valor.components["card-sh"] : {}) },
+        roleta: { ...overlayDefaults.components.roleta, ...(valor.components && valor.components.roleta ? valor.components.roleta : {}) },
       },
     };
   }
@@ -86,6 +90,23 @@
         cena.style.margin = "0";
       }
     }
+    if (roletaHost) aplicarLayoutElemento(roletaHost, overlayConfig.components.roleta, escala, offsetX, offsetY);
+    ajustarTamanhoRoleta();
+  }
+
+  function ajustarTamanhoRoleta() {
+    if (!roletaHost) return;
+    const cena = roletaHost.querySelector('.scene');
+    if (!cena) return;
+    const largura = roletaHost.clientWidth || Number(overlayConfig.components.roleta.width) || 700;
+    const altura = roletaHost.clientHeight || Number(overlayConfig.components.roleta.height) || 700;
+    const tamanho = Math.max(120, Math.floor(Math.min(largura, altura) * 0.82));
+    cena.style.width = '100%';
+    cena.style.height = '100%';
+    cena.style.minHeight = '0';
+    cena.style.setProperty('--size', `${tamanho}px`);
+    const roda = cena.querySelector('.wheel-wrap');
+    if (roda) { roda.style.width = `${tamanho}px`; roda.style.height = `${tamanho}px`; }
   }
 
   function aplicarLayoutElemento(elemento, layout, escala, offsetX, offsetY) {
@@ -111,8 +132,16 @@
   });
 
   socket.on("alert", (payload) => {
+    if (payload && payload.roletaId && ttsRoletasPendentes.has(payload.roletaId)) {
+      const resolver = ttsRoletasPendentes.get(payload.roletaId);
+      ttsRoletasPendentes.delete(payload.roletaId);
+      resolver(payload.audio || "");
+      return;
+    }
     if (payload && payload.tipo === "card-sh") {
       adicionarNaFilaCardSH(payload);
+    } else if (payload && payload.tipo === "roleta") {
+      fila.push({ tipo: "roleta", premios: payload.premios || [], audioInicio: payload.audioInicio || "", audioResultado: payload.audioResultado || "", ttsResultado: payload.ttsResultado || false, ttsOptions: payload.ttsOptions || {} }); tocarProximo();
     } else if (payload && payload.tipo === "tts") {
       adicionarNaFilaTTS(payload);
     } else if (payload && payload.tipo === "midia") {
@@ -130,6 +159,12 @@
 
   socket.on("tts:ready", (payload) => {
     const ttsPayload = payload && payload.tipo ? payload : { tipo: "tts", ...(payload || {}) };
+    if (ttsPayload.roletaId && ttsRoletasPendentes.has(ttsPayload.roletaId)) {
+      const resolver = ttsRoletasPendentes.get(ttsPayload.roletaId);
+      ttsRoletasPendentes.delete(ttsPayload.roletaId);
+      resolver(ttsPayload.audio || "");
+      return;
+    }
     if (ttsPayload.tipo === "tts") {
       adicionarNaFilaTTS(ttsPayload);
     }
@@ -234,7 +269,41 @@
       tocarMidia(item);
     } else if (item.tipo === "card-sh") {
       tocarCardSH(item);
+    } else if (item.tipo === "roleta") {
+      tocarRoleta(item);
     }
+  }
+
+  async function tocarRoleta(item) {
+    if (!roletaHost) return finalizarAudioAtual();
+    try {
+      if (item.audioInicio) { const inicio = new Audio(normalizarAudio(item.audioInicio)); await inicio.play().catch(()=>{}); }
+      const resposta = await fetch('/alert/roleta_premios_v2.html');
+      const html = await resposta.text();
+      const documento = new DOMParser().parseFromString(html, 'text/html');
+      const estilo = document.createElement('style'); estilo.id='roleta-runtime-style'; estilo.textContent=(documento.querySelector('style')||{}).textContent||''; document.head.appendChild(estilo);
+      Array.from(documento.body.children).forEach(el=>{if(el.tagName.toLowerCase()!=='script')roletaHost.appendChild(document.importNode(el,true))});
+      const cenaRoleta = roletaHost.querySelector('.scene');
+      if (cenaRoleta) { cenaRoleta.style.width='100%'; cenaRoleta.style.height='100%'; cenaRoleta.style.minHeight='0'; }
+      const scripts=Array.from(documento.querySelectorAll('script')); window.ROLETA_PREMIOS=item.premios;
+      scripts.forEach(s=>{let code=s.textContent.replace(/const prizes\s*=.*?;/,'const prizes = (window.ROLETA_PREMIOS || []);');new Function(code)()});
+      mediaStage.style.display='block';
+      roletaHost.style.display='block';
+      roletaHost.style.zIndex='9999';
+      ajustarTamanhoRoleta();
+      window.dispatchEvent(new Event('resize'));
+      mediaStage.classList.add('visible');
+      const encerrar = () => { roletaHost.innerHTML='';roletaHost.style.display='none';mediaStage.classList.remove('visible');const st=document.querySelector('#roleta-runtime-style');if(st)st.remove();window.ROLETA_PREMIOS=null;tocando=false;tocarProximo(); };
+      const tocarAudio = (src) => new Promise(resolve => { if (!src) return resolve(); const audio = new Audio(normalizarAudio(src)); audio.addEventListener('ended', resolve, { once:true }); audio.addEventListener('error', resolve, { once:true }); audio.play().catch(resolve); });
+      const tocarResultado = async (premio) => {
+        await tocarAudio(item.audioResultado);
+        if (item.ttsResultado) { try { const texto='Resultado da roleta: '+premio; const roletaId='roleta-'+Date.now()+'-'+Math.random().toString(36).slice(2); const audio=await new Promise(resolve=>{ttsRoletasPendentes.set(roletaId,resolve);socket.emit('tts:request',{roletaId,texto,options:item.ttsOptions||{},comando:'roleta'});setTimeout(()=>{if(ttsRoletasPendentes.has(roletaId)){ttsRoletasPendentes.delete(roletaId);resolve('')}},60000)}); await tocarAudio(audio); } catch(_){} }
+        encerrar();
+      };
+      let resultadoDetectado = false, inicio = Date.now();
+      const aguardarResultado = () => { const banner = roletaHost.querySelector('#banner.show'), texto = roletaHost.querySelector('#winnerText'); if (banner && texto && texto.textContent.trim() && !resultadoDetectado) { resultadoDetectado=true; tocarResultado(texto.textContent.trim()); return; } if (Date.now()-inicio > 60000) return encerrar(); setTimeout(aguardarResultado,100); };
+      aguardarResultado();
+    } catch(e){console.error('[alert] roleta:',e);roletaHost.innerHTML='';roletaHost.style.display='none';mediaStage.classList.remove('visible');tocando=false;tocarProximo()}
   }
 
   async function tocarCardSH(item) {

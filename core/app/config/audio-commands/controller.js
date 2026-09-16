@@ -61,9 +61,8 @@
         if (cmd.restricoes.cargos && cmd.restricoes.cargos.length) restricoes.push('cargos: ' + cmd.restricoes.cargos.join(', '));
         if (restricoes.length) metaParts.push(restricoes.join(' | '));
       }
-      if (cmd.trigger && cmd.trigger.tipo) {
-        metaParts.push('trigger: ' + cmd.trigger.tipo + (cmd.trigger.usuario ? ' / ' + cmd.trigger.usuario : ''));
-      }
+      const t = (config.canais.find(c => c.nome === currentChannel)?.triggers || []).find(x => x.comando === cmd.comando);
+      if (t) metaParts.push('trigger: ' + t.tipo + (t.usuario ? ' / ' + t.usuario : ''));
       left.textContent = cmd.comando + ' → ' + (cmd.audio || '') + (metaParts.length ? ' [' + metaParts.join(' • ') + ']' : '');
       const right = document.createElement('div');
       const editBtn = document.createElement('button');
@@ -131,8 +130,9 @@
     cmdAudio.value = cmd.audio || '';
     if (restricoesUsuarios) restricoesUsuarios.value = Array.isArray(cmd.restricoes && cmd.restricoes.usuarios) ? cmd.restricoes.usuarios.join(', ') : '';
     if (restricoesCargos) restricoesCargos.value = Array.isArray(cmd.restricoes && cmd.restricoes.cargos) ? cmd.restricoes.cargos.join(', ') : '';
-    if (triggerTipo) triggerTipo.value = cmd.trigger && cmd.trigger.tipo ? cmd.trigger.tipo : '';
-    if (triggerUsuario) triggerUsuario.value = cmd.trigger && cmd.trigger.usuario ? cmd.trigger.usuario : '';
+    const cmdTrigger = (canal.triggers || []).find(t => t.comando === cmd.comando);
+    if (triggerTipo) triggerTipo.value = cmdTrigger && cmdTrigger.tipo ? cmdTrigger.tipo : '';
+    if (triggerUsuario) triggerUsuario.value = cmdTrigger && cmdTrigger.usuario ? cmdTrigger.usuario : '';
     deleteBtn.style.display = 'inline-block';
     const editorCol = document.getElementById('editorColumn');
     if (editorCol) editorCol.style.display = '';
@@ -170,12 +170,13 @@
       canal.comandos[idx].comando = name;
       canal.comandos[idx].audio = audio;
       if (restricoes) { canal.comandos[idx].restricoes = restricoes; } else { delete canal.comandos[idx].restricoes; }
-      if (trigger) { canal.comandos[idx].trigger = trigger; } else { delete canal.comandos[idx].trigger; }
+      canal.triggers = (canal.triggers || []).filter(t => t.comando !== name);
+      if (trigger) canal.triggers.push({ ...trigger, comando: name });
     } else {
       canal.comandos = canal.comandos || [];
       const payload = { tipo: 'audio', comando: name, audio: audio };
       if (restricoes) payload.restricoes = restricoes;
-      if (trigger) payload.trigger = trigger;
+      // Triggeres são salvos no canal.triggers, nunca dentro do comando.
       canal.comandos.push(payload);
     }
     saveConfig(config).then(() => { clearEditor(); renderCommandsList(); alert('Salvo com sucesso'); try { window.parent.postMessage({ type: 'configSaved' }, '*'); } catch(e){} }).catch(err => { alert('Erro: ' + err.message); });

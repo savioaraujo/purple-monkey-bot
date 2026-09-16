@@ -16,7 +16,8 @@ body {
 
 .alert-app,
 .media-stage,
-#card-sh-host {
+#card-sh-host,
+#roleta-host {
   background: transparent !important;
   background-color: transparent !important;
   background-image: none !important;
@@ -38,3 +39,4 @@ body {
 .media-stage img.visible, .media-stage video.visible { display:block; }
 #card-sh-host { display:none; height:min(760px, 100vh); position:absolute; width:min(950px, 100vw); }
 #card-sh-host.visible { display:block; }
+#roleta-host { display:none; position:absolute; inset:0; z-index:20; }

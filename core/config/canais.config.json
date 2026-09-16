@@ -16,10 +16,10 @@
       "moderation:read",
       "channel:moderate"
     ],
-    "userAccessToken": "k6xpcr0ovfe2ruui7brt0shf1b2l2f",
-    "refreshToken": "cfcwk9333j5ng3lw25xz6d7rz0nbsnk8w0s0daovl5mycu57qz",
+    "userAccessToken": "0qj8jezkap5hkrtzhsy5aynzxtm8pp",
+    "refreshToken": "d4de8qim3ovtk7t25wj9yyy5gzggohndeh99hftb1hann2w2zj",
     "tokenType": "bearer",
-    "tokenExpiresAt": "2026-09-15T09:16:09.886Z",
+    "tokenExpiresAt": "2026-09-16T08:14:11.625Z",
     "moderatorId": "491852579",
     "moderatorLogin": "balderking",
     "cacheTtlMs": 30000,
@@ -28,6 +28,18 @@
   "canais": [
     {
       "nome": "balderking",
+      "triggers": [
+        {
+          "tipo": "primeira-mensagem",
+          "comando": "!nanezinha",
+          "usuario": "nanezinhas2"
+        },
+        {
+          "tipo": "primeira-mensagem",
+          "comando": "!cuequinha",
+          "usuario": "KingDraknes"
+        }
+      ],
       "comandos": [
         {
           "tipo": "audio",
@@ -42,10 +54,6 @@
             "usuarios": [
               "nanezinhas2"
             ]
-          },
-          "trigger": {
-            "tipo": "primeira-mensagem",
-            "usuario": "nanezinhas2"
           }
         },
         {
@@ -88,11 +96,13 @@
           "comando": "!test-tts",
           "resposta": "Teste de TTS automático: Olá, isso é um teste gerado pelo bot.",
           "options": {
-            "provider": "xai",
-            "voice": "eve",
-            "language": "pt-br",
-            "instructions": "Fale de forma clara e em tom amistoso.",
-            "model": "gpt-4o-mini-tts"
+            "provider": "puter",
+            "voice": "cgSgspJ2msm6clMCkdW9",
+            "language": "",
+            "model": "eleven_multilingual_v2",
+            "instructions": null,
+            "puterProvider": "elevenlabs",
+            "voiceLabel": "Jessica - Playful, Bright, Warm"
           }
         },
         {
@@ -155,11 +165,7 @@
         {
           "tipo": "audio",
           "comando": "!cuequinha",
-          "audio": "/alert/sounds/cueca-branca.mp3",
-          "trigger": {
-            "tipo": "primeira-mensagem",
-            "usuario": "KingDraknes"
-          }
+          "audio": "/alert/sounds/cueca-branca.mp3"
         }
       ],
       "listas": [
@@ -248,6 +254,29 @@
           "descricao": "",
           "ativo": true
         }
+      ],
+      "roletas": [
+        {
+          "nome": "nova-roleta",
+          "premios": [],
+          "usuarios": [
+            "balderking"
+          ],
+          "cargos": [],
+          "lista": "animais",
+          "comando": "!teste-roleta",
+          "recompensas": [],
+          "acionamento": "comando",
+          "ttsResultado": true,
+          "ttsOptions": {
+            "provider": "puter",
+            "puterProvider": "xai",
+            "model": "xai-tts",
+            "language": "pt-BR",
+            "voice": "ara",
+            "voiceLabel": "Ara"
+          }
+        }
       ]
     }
   ],
@@ -265,10 +294,17 @@
         "scale": 1
       },
       "card-sh": {
-        "x": 1741,
-        "y": 500,
+        "x": 767,
+        "y": 559,
         "width": 300,
         "height": 400,
+        "scale": 1
+      },
+      "roleta": {
+        "x": 770,
+        "y": 504,
+        "width": 500,
+        "height": 500,
         "scale": 1
       }
     }

@@ -200,8 +200,10 @@
             <button data-type="texto-simples">Texto simples</button>
             <button data-type="texto-regex">Texto regex</button>
             <button data-type="tts">TTS</button>
-            <button data-type="card-sh">Card SH</button>
-            <button data-type="recompensas">Recompensas por pontos</button>
+          <button data-type="card-sh">Card SH</button>
+          <button data-type="roletas">Configurar roletas</button>
+          <button data-type="recompensas">Recompensas por pontos</button>
+            <button data-type="triggers">Triggers</button>
           </div>
 
           <div style="margin-top:14px;">
@@ -346,7 +348,7 @@
         const canal = (configData.canais || [])[currentChannelIndex];
         if (!canal) return;
 
-        const supportedTypes = ['texto-simples', 'texto-regex', 'audio', 'tts', 'card-sh', 'overlay', 'recompensas'];
+        const supportedTypes = ['texto-simples', 'texto-regex', 'audio', 'tts', 'card-sh', 'roletas', 'overlay', 'recompensas', 'triggers'];
         if (!supportedTypes.includes(currentType)) {
           editorArea.innerHTML = '';
           return;
@@ -358,10 +360,13 @@
 
       function getIframeSrcForType(type) {
         if (type === 'recompensas') return '/config/rewards';
+        if (type === 'triggers') return '/config/triggers';
         if (type === 'texto-simples') return '/config/text-commands';
         if (type === 'texto-regex') return '/config/text-commands?type=texto-regex';
         if (type === 'tts') return '/config/text-commands?type=tts';
         if (type === 'card-sh') return '/config/text-commands?type=card-sh';
+        if (type === 'roleta') return '/config/text-commands?type=roleta';
+        if (type === 'roletas') return '/config/roletas';
         if (type === 'overlay') return '/config/overlay';
         return '/config/audio-commands';
       }
@@ -550,8 +555,8 @@
             const provider = providerSelect.value || 'puter';
             const language = languageSelect.value || 'pt-BR';
             const apiOptions = await carregarOpcoesTts(provider, language);
-            fillSelect(languageSelect, apiOptions.languages || [], optionsObj.language || 'pt-BR');
-            fillSelect(voiceSelect, apiOptions.voices || [], optionsObj.voice || 'Vitoria');
+            fillSelect(languageSelect, apiOptions.languages || [], apiOptions.language || language);
+            fillSelect(voiceSelect, apiOptions.voices || [], apiOptions.voices && apiOptions.voices[0] || 'Vitoria');
             optionsField.value = JSON.stringify({
               provider: providerSelect.value,
               language: languageSelect.value,

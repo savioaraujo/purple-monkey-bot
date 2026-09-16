@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Triggers</title>
+<style>
+body{font:14px Arial;background:#1b1024;color:#fff;padding:24px}main{max-width:850px;margin:auto}
+select,input,button{padding:10px;margin:5px 0;background:#2c1c43;color:#fff;border:1px solid #7a5ba8;border-radius:6px;box-sizing:border-box}select,input{width:100%}
+.card{padding:16px;margin:12px 0;background:#2d1c44;border:1px solid #5f4488;border-radius:8px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.row{padding:10px;border-bottom:1px solid #654080;display:flex;justify-content:space-between;gap:12px}.primary{background:#7b4ed4}.danger{color:#ffb1a8}
+</style></head><body><main>
+<h1>Triggers</h1><p>Associe qualquer comando existente a um evento.</p>
+<section class="card"><div class="grid">
+<label>Canal<select id="channel"></select></label>
+<label>Comando de destino<select id="command"></select></label>
+<label>Tipo<select id="type"><option value="primeira-mensagem">Primeira mensagem no chat</option><option value="texto-regex">Padrão de texto (regex)</option></select></label>
+<label>Usuário (opcional)<input id="user" placeholder="alice"></label>
+<label id="regexWrap" style="display:none">Regex<input id="regex" placeholder="^bom dia|!ola"></label>
+</div><button class="primary" id="save">Adicionar trigger</button></section>
+<section class="card"><h2>Triggers configurados</h2><div id="list"></div></section></main>
+<script>
+let config;const $=id=>document.getElementById(id);
+const esc=value=>String(value||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function canal(){return config.canais[Number($('channel').value)]}
+function atualizarComandos(){const c=canal();$('command').innerHTML=(c.comandos||[]).map(x=>{const n=x.comando||x.matcher;return `<option value="${esc(n)}">${esc(n)}</option>`}).join('')}
+function render(){atualizarComandos();const c=canal();$('list').innerHTML=(c.triggers||[]).map((t,i)=>`<div class="row"><span><b>${esc(t.tipo)}</b> → ${esc(t.comando)}${t.regex?' / '+esc(t.regex):''}${t.usuario?' / usuário: '+esc(t.usuario):''}</span><button class="danger" onclick="excluir(${i})">Excluir</button></div>`).join('')||'<p>Nenhum trigger configurado.</p>'}
+async function persist(){const response=await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(config)});const body=await response.json();if(!response.ok)throw Error(body.erro||'Erro ao salvar');config=body;render()}
+async function excluir(index){canal().triggers.splice(index,1);await persist()}
+$('type').onchange=()=>{$('regexWrap').style.display=$('type').value==='texto-regex'?'block':'none'};
+$('channel').onchange=render;
+$('save').onclick=async()=>{const c=canal();c.triggers=c.triggers||[];const tipo=$('type').value;const trigger={tipo,comando:$('command').value};const usuario=$('user').value.trim();if(usuario)trigger.usuario=usuario;if(tipo==='texto-regex'){trigger.regex=$('regex').value.trim();if(!trigger.regex)return alert('Informe a regex.')}c.triggers.push(trigger);$('user').value='';$('regex').value='';await persist()};
+(async()=>{config=await(await fetch('/api/config')).json();$('channel').innerHTML=config.canais.map((c,i)=>`<option value="${i}">${esc(c.nome)}</option>`).join('');render()})();
+</script></body></html>

@@ -39,6 +39,8 @@ servidor.registrarConteudoPublico(__dirname + "/core/app/config/text-commands", 
 // Tela MVC para CRUD de comandos de audio
 servidor.registrarApp("/config/audio-commands", __dirname + "/core/app/config/audio-commands/index.html");
 servidor.registrarConteudoPublico(__dirname + "/core/app/config/audio-commands", "/config/audio-commands");
+servidor.registrarApp("/config/triggers", __dirname + "/core/app/config/triggers/index.html");
+servidor.registrarApp("/config/roletas", __dirname + "/core/app/config/roletas/index.html");
 servidor.registrarConteudoPublico(__dirname + "/core/app/alert", "/alert");
 servidor.registrarConteudoPublico(alertSoundsDir, "/alert/sounds");
 servidor.registrarConteudoPublico(ttsGeneratedDir, "/tts/generated");
@@ -55,7 +57,26 @@ servidor.registrarGet("/api/tts/options", (req, res) => {
   try {
     const provider = req.query.provider || "puter";
     const language = req.query.language || "pt-BR";
+    const query = String(req.query.q || '').trim().toLowerCase();
     const options = ttsOptionsService.getOptions(provider, language);
+    if (String(provider).toLowerCase() === 'puter') {
+      const catalogo = servidor.getTtsCatalogoPuter();
+      const vozesCatalogo = catalogo.voices || [];
+      if (vozesCatalogo.length) {
+        const puterProvider = String(req.query.puterProvider || req.query.puter_provider || 'aws-polly');
+        const model = String(req.query.model || '');
+        const vozesProvider = vozesCatalogo.filter(v => (v.provider || 'aws-polly') === puterProvider && (!model || !(v.supported_models || v.supported_engines) || (v.supported_models || v.supported_engines).includes(model)));
+        const idiomas = [...new Set(vozesProvider.map(v => v.language && v.language.code).filter(Boolean))].sort();
+        const idiomaSelecionado = idiomas.includes(language) ? language : (idiomas[0] || language);
+        options.languages = idiomas;
+        options.language = idiomaSelecionado;
+        options.puterProviders = [...new Set(vozesCatalogo.map(v => v.provider || 'aws-polly'))].sort();
+        options.models = (catalogo.engines || []).filter(e => e.provider === puterProvider).map(e => ({ value: e.id, label: e.name || e.id }));
+        options.voiceOptions = vozesProvider.filter(v => !v.language || v.language.code === idiomaSelecionado).map(v => ({ value: v.id, label: v.name || v.id, provider: v.provider || puterProvider }));
+        options.voices = options.voiceOptions.map(v => v.label);
+      }
+    }
+    if (query) options.voices = options.voices.filter((voice) => String(voice).toLowerCase().includes(query));
     res.json(options);
   } catch (error) {
     res.status(500).json({ erro: error.message });

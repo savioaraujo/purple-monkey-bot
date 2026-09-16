@@ -16,6 +16,8 @@
   const cancelBtn = document.getElementById('cancelBtn');
   const deleteBtn = document.getElementById('deleteBtn');
   const macrosListEl = document.getElementById('macrosList');
+  const roletaSelect = document.getElementById('roletaSelect');
+  const roletaLabel = document.getElementById('roletaLabel');
 
   let config = null;
   let currentChannel = null;
@@ -43,6 +45,13 @@
     }
   }
 
+  function populateRoletas() {
+    if (!roletaSelect) return;
+    const canal = (config.canais || []).find(c => c.nome === currentChannel);
+    roletaSelect.innerHTML = '<option value="">Selecione uma roleta</option>' +
+      ((canal && canal.roletas) || []).map(r => `<option value="${r.nome}">${r.nome}</option>`).join('');
+  }
+
   function getCommandsForChannel(nome) {
     const canal = (config.canais || []).find(c => c.nome === nome);
     if (!canal) return [];
@@ -63,9 +72,9 @@
         if (cmd.restricoes.cargos && cmd.restricoes.cargos.length) restricoes.push('cargos: ' + cmd.restricoes.cargos.join(', '));
         if (restricoes.length) metaParts.push(restricoes.join(' | '));
       }
-      if (cmd.trigger && cmd.trigger.tipo) {
-        metaParts.push('trigger: ' + cmd.trigger.tipo + (cmd.trigger.usuario ? ' / ' + cmd.trigger.usuario : ''));
-      }
+      const cmdTriggers = (config.canais.find(c => c.nome === currentChannel)?.triggers || [])
+        .filter(t => t.comando === (cmd.comando || cmd.matcher));
+      cmdTriggers.forEach(t => metaParts.push('trigger: ' + t.tipo + (t.usuario ? ' / ' + t.usuario : '')));
       left.textContent = (cmd.comando || cmd.matcher || '') + ' → ' + (cmd.resposta || '') + (metaParts.length ? ' [' + metaParts.join(' • ') + ']' : '');
       const right = document.createElement('div');
       const editBtn = document.createElement('button');
@@ -80,6 +89,7 @@
 
   function onChannelChange() {
     currentChannel = channelSelect.value;
+    populateRoletas();
     clearEditor();
     renderCommandsList();
   }
@@ -111,8 +121,11 @@
     }
   }
 
-  async function carregarOpcoesTts(providerAtual = 'puter', languageAtual = 'pt-BR') {
-    const options = await fetch('/api/tts/options?provider=' + encodeURIComponent(providerAtual) + '&language=' + encodeURIComponent(languageAtual)).then(r => r.json());
+  async function carregarOpcoesTts(providerAtual = 'puter', languageAtual = 'pt-BR', puterProvider = '', model = '') {
+    const params = new URLSearchParams({ provider: providerAtual, language: languageAtual });
+    if (puterProvider) params.set('puterProvider', puterProvider);
+    if (model) params.set('model', model);
+    const options = await fetch('/api/tts/options?' + params.toString()).then(r => r.json());
     return options || { providers: [], languages: [], voices: [] };
   }
 
@@ -127,6 +140,8 @@
     voiceWrap.innerHTML = '<label>Voz</label>';
 
     const providerSelect = document.createElement('select');
+    const puterProviderSelect = document.createElement('select');
+    const modelSelect = document.createElement('select');
     const languageSelect = document.createElement('select');
     const voiceSelect = document.createElement('select');
 
@@ -147,12 +162,12 @@
       }
     };
 
-    const atualizarOpcoes = async () => {
+    const atualizarOpcoes = async (trocaProvider = false) => {
       const provider = providerSelect.value || 'puter';
-      const language = languageSelect.value || 'pt-BR';
+      const language = trocaProvider ? 'pt-BR' : (languageSelect.value || 'pt-BR');
       const api = await carregarOpcoesTts(provider, language);
-      preencherSelect(languageSelect, api.languages || [], language);
-      preencherSelect(voiceSelect, api.voices || [], (defOptions.voice || api.voices && api.voices[0]));
+      preencherSelect(languageSelect, api.languages || [], api.language || language);
+      preencherSelect(voiceSelect, api.voices || [], trocaProvider ? (api.voices && api.voices[0]) : (voiceSelect.value || defOptions.voice));
       if (cmdOptions) {
         cmdOptions.value = JSON.stringify({
           provider: providerSelect.value,
@@ -164,8 +179,8 @@
       }
     };
 
-    providerSelect.addEventListener('change', atualizarOpcoes);
-    languageSelect.addEventListener('change', atualizarOpcoes);
+    providerSelect.addEventListener('change', () => atualizarOpcoes(true));
+    languageSelect.addEventListener('change', () => atualizarOpcoes(false));
 
     const defaults = Object.assign({}, getDefaultTtsOptions(), defOptions || {});
     const providers = (options && options.providers) || [{ value: 'puter', label: 'Puter' }, { value: 'local', label: 'Local' }];
@@ -260,8 +275,9 @@
     }
     if (restricoesUsuarios) restricoesUsuarios.value = Array.isArray(cmd.restricoes && cmd.restricoes.usuarios) ? cmd.restricoes.usuarios.join(', ') : '';
     if (restricoesCargos) restricoesCargos.value = Array.isArray(cmd.restricoes && cmd.restricoes.cargos) ? cmd.restricoes.cargos.join(', ') : '';
-    if (triggerTipo) triggerTipo.value = cmd.trigger && cmd.trigger.tipo ? cmd.trigger.tipo : '';
-    if (triggerUsuario) triggerUsuario.value = cmd.trigger && cmd.trigger.usuario ? cmd.trigger.usuario : '';
+    const cmdTrigger = (canal.triggers || []).find(t => t.comando === (cmd.comando || cmd.matcher));
+    if (triggerTipo) triggerTipo.value = cmdTrigger && cmdTrigger.tipo ? cmdTrigger.tipo : '';
+    if (triggerUsuario) triggerUsuario.value = cmdTrigger && cmdTrigger.usuario ? cmdTrigger.usuario : '';
     deleteBtn.style.display = 'inline-block';
     const editorCol = document.getElementById('editorColumn');
     if (editorCol) editorCol.style.display = '';
@@ -294,6 +310,9 @@
     const title = document.getElementById('pageTitle');
     const isTtsLike = currentType === 'tts' || currentType === 'chat-tts';
     const isCardSH = currentType === 'card-sh';
+    const isRoleta = currentType === 'roleta';
+    if (roletaLabel) roletaLabel.style.display = isRoleta ? '' : 'none';
+    if (roletaSelect) roletaSelect.style.display = isRoleta ? '' : 'none';
     if (label) {
       label.innerHTML = currentType === 'texto-regex'
         ? 'Regex do comando (ex: !teste|!teste2) <span style="color:red">*</span>'
@@ -339,25 +358,33 @@
     target.style.gap = '10px';
 
     const providerSelect = document.createElement('select');
+    const puterProviderSelect = document.createElement('select');
+    const modelSelect = document.createElement('select');
     const languageSelect = document.createElement('select');
     const voiceSelect = document.createElement('select');
 
     const providerWrap = document.createElement('div');
+    const puterProviderWrap = document.createElement('div');
+    const modelWrap = document.createElement('div');
     const languageWrap = document.createElement('div');
     const voiceWrap = document.createElement('div');
     providerWrap.innerHTML = '<label>Provider</label>';
+    puterProviderWrap.innerHTML = '<label>Provider Puter</label>';
+    modelWrap.innerHTML = '<label>Modelo / engine</label>';
     languageWrap.innerHTML = '<label>Idioma</label>';
     voiceWrap.innerHTML = '<label>Voz</label>';
 
     const fill = (select, values, selected) => {
       select.innerHTML = '';
-      values.forEach((value) => {
+      values.forEach((item) => {
+        const value = typeof item === 'object' ? item.value : item;
         const option = document.createElement('option');
         option.value = value;
-        option.textContent = value;
+        option.textContent = typeof item === 'object' ? item.label : value;
         select.appendChild(option);
       });
-      if (selected && values.includes(selected)) {
+      const ids = values.map(item => typeof item === 'object' ? item.value : item);
+      if (selected && ids.includes(selected)) {
         select.value = selected;
       } else if (values.length) {
         select.value = values[0];
@@ -370,39 +397,62 @@
     const setJsonValue = () => {
       cmdOptions.value = JSON.stringify({
         provider: providerSelect.value,
+        puterProvider: providerSelect.value === 'puter' ? puterProviderSelect.value : null,
         language: languageSelect.value,
         voice: voiceSelect.value,
-        model: null,
+        voiceLabel: voiceSelect.selectedOptions[0] ? voiceSelect.selectedOptions[0].textContent : voiceSelect.value,
+        model: providerSelect.value === 'puter' ? modelSelect.value || null : null,
         instructions: null,
       }, null, 2);
     };
 
     providerSelect.addEventListener('change', async () => {
       const data = await carregarOpcoesTts(providerSelect.value || 'puter', 'pt-BR');
+      const isPuter = providerSelect.value === 'puter';
+      puterProviderWrap.style.display = isPuter ? '' : 'none'; modelWrap.style.display = isPuter ? '' : 'none';
+      fill(puterProviderSelect, data.puterProviders || [], parsed.puterProvider || 'aws-polly');
+      fill(modelSelect, data.models || [], parsed.model || '');
       fill(languageSelect, data.languages || [], (data.languages || [])[0] || 'pt-BR');
-      fill(voiceSelect, data.voices || [], (data.voices || [])[0] || 'Vitoria');
+      fill(voiceSelect, data.voiceOptions || data.voices || [], (data.voiceOptions && data.voiceOptions[0] && data.voiceOptions[0].value) || data.voices && data.voices[0] || 'Vitoria');
       setJsonValue();
     });
 
+    const atualizarPuter = async (preservarVoz = false) => {
+      const data = await carregarOpcoesTts('puter', languageSelect.value || 'pt-BR', puterProviderSelect.value, modelSelect.value);
+      fill(modelSelect, data.models || [], modelSelect.value || parsed.model || '');
+      fill(languageSelect, data.languages || [], data.language || languageSelect.value);
+      fill(voiceSelect, data.voiceOptions || data.voices || [], preservarVoz ? voiceSelect.value : parsed.voice);
+      setJsonValue();
+    };
+    puterProviderSelect.addEventListener('change', () => atualizarPuter(false));
+    modelSelect.addEventListener('change', () => atualizarPuter(false));
+
     languageSelect.addEventListener('change', async () => {
-      const data = await carregarOpcoesTts(providerSelect.value || 'puter', languageSelect.value || 'pt-BR');
-      fill(voiceSelect, data.voices || [], (data.voices || [])[0] || 'Vitoria');
+      const data = await carregarOpcoesTts(providerSelect.value || 'puter', languageSelect.value || 'pt-BR', puterProviderSelect.value, modelSelect.value);
+      fill(voiceSelect, data.voiceOptions || data.voices || [], (data.voiceOptions && data.voiceOptions[0] && data.voiceOptions[0].value) || data.voices && data.voices[0] || 'Vitoria');
       setJsonValue();
     });
 
     voiceSelect.addEventListener('change', setJsonValue);
 
-    carregarOpcoesTts(providerSelect.value || 'puter', parsed.language || 'pt-BR').then((data) => {
+    carregarOpcoesTts(providerSelect.value || 'puter', parsed.language || 'pt-BR', parsed.puterProvider || 'aws-polly', parsed.model || '').then((data) => {
+      fill(puterProviderSelect, data.puterProviders || [], parsed.puterProvider || 'aws-polly');
+      fill(modelSelect, data.models || [], parsed.model || '');
       fill(languageSelect, data.languages || [], parsed.language || 'pt-BR');
-      fill(voiceSelect, data.voices || [], parsed.voice || 'Vitoria');
+      fill(voiceSelect, data.voiceOptions || data.voices || [], parsed.voice || 'Vitoria');
+      const isPuter = providerSelect.value === 'puter'; puterProviderWrap.style.display=isPuter?'':'none'; modelWrap.style.display=isPuter?'':'none';
       setJsonValue();
     });
 
     providerWrap.appendChild(providerSelect);
+    puterProviderWrap.appendChild(puterProviderSelect);
+    modelWrap.appendChild(modelSelect);
     languageWrap.appendChild(languageSelect);
     voiceWrap.appendChild(voiceSelect);
 
     target.appendChild(providerWrap);
+    target.appendChild(puterProviderWrap);
+    target.appendChild(modelWrap);
     target.appendChild(languageWrap);
     target.appendChild(voiceWrap);
     parent.insertBefore(target, cmdOptions);
@@ -414,8 +464,10 @@
     const response = (cmdResponse.value || '').trim();
     const isTtsLike = currentType === 'tts' || currentType === 'chat-tts';
     const isCardSH = currentType === 'card-sh';
+    const isRoleta = currentType === 'roleta';
 
-    if (!name || (!response && !isTtsLike && !isCardSH)) {
+    const premios = response.split('\n').map(item => item.trim()).filter(Boolean);
+    if (!name || (isRoleta && !roletaSelect.value) || (!response && !isTtsLike && !isCardSH && !isRoleta)) {
       alert(currentType === 'texto-regex' ? 'Regex e resposta são obrigatórios' : isTtsLike || isCardSH ? 'Nome é obrigatório' : 'Nome e resposta são obrigatórios');
       return;
     }
@@ -441,8 +493,10 @@
       tipo: currentType,
       ...(currentType === 'texto-regex' ? { matcher: name } : { comando: name }),
       ...(response ? { resposta: response } : {}),
+      ...(isRoleta ? { premios } : {}),
+      ...(isRoleta ? { roleta: roletaSelect.value } : {}),
       ...(restricoes ? { restricoes } : {}),
-      ...(trigger ? { trigger } : {})
+      
     };
 
     if (idx >= 0) {
@@ -460,11 +514,8 @@
       } else {
         delete canal.comandos[idx].restricoes;
       }
-      if (trigger) {
-        canal.comandos[idx].trigger = trigger;
-      } else {
-        delete canal.comandos[idx].trigger;
-      }
+      canal.triggers = (canal.triggers || []).filter(t => t.comando !== name);
+      if (trigger) canal.triggers.push({ ...trigger, comando: name });
       if (isTtsLike) {
         canal.comandos[idx].options = optionsPayload;
       }

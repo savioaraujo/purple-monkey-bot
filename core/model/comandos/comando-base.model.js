@@ -119,6 +119,16 @@ class ComandoBase {
       return eventoPrimeiraMensagem && usuarioEmTrigger;
     }
 
+    if (["texto-regex", "padrao-texto", "padrão-texto"].includes(this.trigger.tipo)) {
+      const regex = this.trigger.regex || this.trigger.padrao;
+      if (!regex || typeof evento.mensagem !== "string") return false;
+      try {
+        const usuario = this.normalizarTexto(tags.username || tags.user || "");
+        return new RegExp(regex, this.trigger.flags || "i").test(evento.mensagem) &&
+          (usuariosAlvo.length === 0 || usuariosAlvo.includes(usuario));
+      } catch (_) { return false; }
+    }
+
     return true;
   }
 

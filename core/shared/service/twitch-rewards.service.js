@@ -130,7 +130,32 @@ class TwitchRewardsService {
       this.registrarLog("aviso", "Resgate sem configuração correspondente. rewardId=" + evento.reward.id + ", título=" + evento.reward.title + ".");
       return false;
     }
-    this.servidor.notificarSockets("alert", {
+    const roleta = (canal.roletas || []).find((item) => {
+      const refs = item.recompensas || item.rewards || [];
+      if (item.acionamento && item.acionamento !== 'recompensa') return false;
+      return refs.some((ref) => (ref.rewardId && ref.rewardId === evento.reward.id) ||
+        (ref.titulo && String(ref.titulo).toLowerCase() === String(evento.reward.title || '').toLowerCase()) ||
+        ref === evento.reward.id || ref === evento.reward.title);
+    });
+    if (roleta) {
+      const usuario = String(evento.user_login || evento.user_name || '').toLowerCase();
+      const usuarios = (roleta.usuarios || []).map((item) => String(item).toLowerCase());
+      if (usuarios.length && !usuarios.includes(usuario)) {
+        this.registrarLog('aviso', 'Resgate ignorado: usuário sem permissão para a roleta.');
+        return false;
+      }
+    }
+    this.servidor.notificarSockets("alert", roleta ? {
+      tipo: "roleta",
+      premios: [
+        ...(((canal.listas || []).find(l => l.nome === roleta.lista) || {}).valores || []),
+        ...(roleta.premios || []),
+      ],
+      comando: roleta.nome || "recompensa",
+      usuario: evento.user_name || evento.user_login || "",
+      recompensa: evento.reward.title,
+      audioInicio: roleta.audioInicio || "", audioResultado: roleta.audioResultado || "", ttsResultado: roleta.ttsResultado || false, ttsOptions: roleta.ttsOptions || {},
+    } : {
       tipo: "midia",
       origem: "pontos-do-canal",
       recompensa: evento.reward.title,

@@ -228,7 +228,7 @@
           "PT-BR": "pt-BR",
         };
 
-        const vozValida = vozMap[vozNormalizada] || vozNormalizada || "Vitoria";
+        const vozValida = providerNormalizado === "local" ? (vozMap[vozNormalizada] || vozNormalizada || "Vitoria") : (vozNormalizada || "Vitoria");
         const languageValida = vozMap[languageNormalizada] || languageNormalizada || "pt-BR";
 
         if (providerNormalizado === "local") {
@@ -246,7 +246,7 @@
         };
       }
 
-      async function gerarAudioComFallback(texto, voz, language, provider = "puter") {
+      async function gerarAudioComFallback(texto, voz, language, provider = "puter", configuracao = {}) {
         const opcoes = normalizarOpcaoTts(voz, language, provider);
 
         if (provider === "local") {
@@ -267,10 +267,19 @@
         }
 
         if (window.puter && window.puter.ai && typeof window.puter.ai.txt2speech === "function") {
-          const audioObj = await window.puter.ai.txt2speech(texto, {
-            voice: opcoes.voz,
+          const partesVoz = String(opcoes.voz || "").split(":");
+          const vozesCatalogo = window.PUTER_TTS_CATALOG && window.PUTER_TTS_CATALOG.voices || [];
+          const vozCatalogo = vozesCatalogo.find((item) => item.id === opcoes.voz || item.name === opcoes.voz);
+          const providerPuter = configuracao.puterProvider || (vozCatalogo && vozCatalogo.provider) || (partesVoz.length > 1 ? partesVoz.shift() : "aws-polly");
+          const vozPuter = vozCatalogo ? vozCatalogo.id : (partesVoz.length ? partesVoz.join(":") : opcoes.voz);
+          const parametrosPuter = {
+            provider: providerPuter,
+            voice: vozPuter,
             language: opcoes.language,
-          });
+          };
+          if (configuracao.model) parametrosPuter.model = configuracao.model;
+          if (configuracao.engine) parametrosPuter.engine = configuracao.engine;
+          const audioObj = await window.puter.ai.txt2speech(texto, parametrosPuter);
 
           return {
             audio: typeof audioObj === "string" ? audioObj : (audioObj && audioObj.src ? audioObj.src : ""),
@@ -309,6 +318,13 @@
       socket.on("connect", () => {
         console.log("[tts-processor] conectado ao socket do servidor");
         socket.emit("tts:register-processor");
+        if (window.puter && window.puter.ai && window.puter.ai.txt2speech && typeof window.puter.ai.txt2speech.listVoices === "function") {
+          Promise.all([
+            window.puter.ai.txt2speech.listVoices({ provider: "all" }),
+            window.puter.ai.txt2speech.listEngines({ provider: "all" }),
+          ]).then(([voices, engines]) => { window.PUTER_TTS_CATALOG = { voices: Array.isArray(voices) ? voices : [], engines: Array.isArray(engines) ? engines : [] }; socket.emit("tts:catalog", window.PUTER_TTS_CATALOG); })
+            .catch((error) => console.warn("[tts-processor] falha ao carregar catálogo Puter:", error));
+        }
         document.getElementById("statusText").textContent = "Processador conectado e pronto";
         carregarFila();
       });
@@ -332,16 +348,19 @@
           const language = payload.options && payload.options.language ? payload.options.language : "pt-BR";
           const opcoes = normalizarOpcaoTts(voz, language, provider);
 
-          const audioResultado = await gerarAudioComFallback(texto, opcoes.voz, opcoes.language, opcoes.provider);
+          const audioResultado = await gerarAudioComFallback(texto, opcoes.voz, opcoes.language, opcoes.provider, payload.options || {});
           const audioUrl = audioResultado.audio || "";
           const nomeArquivo = `tts-${Date.now()}.mp3`;
 
           const retorno = {
             tipo: "tts",
+            roletaId: payload.roletaId || "",
             comando: payload.comando,
             usuario: payload.usuario || "",
             channel: payload.channel || "",
             provider: opcoes.provider,
+            puterProvider: payload.options && payload.options.puterProvider || null,
+            model: payload.options && payload.options.model || null,
             language: opcoes.language,
             voice: opcoes.voz,
             audio: audioUrl,
@@ -366,6 +385,7 @@
           console.error("[tts-processor] erro ao gerar TTS:", error);
           socket.emit("tts:ready", {
             tipo: "alert-error",
+            roletaId: payload.roletaId || "",
             comando: payload.comando,
             usuario: payload.usuario || "",
             channel: payload.channel || "",
